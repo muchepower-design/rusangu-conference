@@ -1,0 +1,22 @@
+# Python
+backend/venv/
+backend/env/
+backend/backend.zip
+__pycache__/
+*.pyc
+*.db
+*.sqlite3
+
+
+# React / Node
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+
+
+# IDE
+.vscode/
+.idea/
+
+android/
+ios/

@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Glassmorphism base */
+@layer components {
+  .glass {
+    @apply backdrop-blur-xl bg-white/30 dark:bg-gray-900/30 border border-white/20 dark:border-gray-700/30 shadow-xl;
+  }
+  .glass-card {
+    @apply glass rounded-2xl p-6 transition-all duration-300 hover:shadow-2xl;
+  }
+  .glass-input {
+    @apply glass bg-white/40 dark:bg-gray-800/40 border border-white/50 dark:border-gray-600/50 rounded-lg px-4 py-2 
+           focus:outline-none focus:ring-2 focus:ring-sda-blue-light focus:border-transparent
+           shadow-inner transition-all duration-200
+           hover:bg-white/50 dark:hover:bg-gray-800/50;
+  }
+  .glass-button {
+    @apply glass bg-sda-blue/80 hover:bg-sda-blue dark:bg-sda-blue-dark/80 dark:hover:bg-sda-blue-dark 
+           text-white font-semibold px-6 py-2 rounded-lg transition-all duration-300 hover:scale-105;
+  }
+  .glass-button-gold {
+    @apply glass bg-sda-gold/80 hover:bg-sda-gold text-sda-blue-dark font-semibold px-6 py-2 rounded-lg transition-all duration-300 hover:scale-105;
+  }
+  .glass-button-danger {
+    @apply glass bg-red-600/80 hover:bg-red-700/80 text-white font-semibold px-6 py-2 rounded-lg transition-all duration-300 hover:scale-105;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-gray-200/50 dark:bg-gray-700/50 backdrop-blur-sm;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-sda-blue/50 rounded-full hover:bg-sda-blue/70;
+}
+
+/* Loading spinner */
+.spinner {
+  border: 4px solid rgba(0,0,0,0.1);
+  border-radius: 50%;
+  border-top: 4px solid #0054A4;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+.dark .spinner {
+  border-top: 4px solid #00A3E0;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ===== Enhanced Background ===== */
+body {
+  /* Fixed background image (Christianity + Technology) – blurred */
+  /*background-image: url('https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=1400&q=80'); */
+  background-image: url('/rusangu.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  min-height: 100vh;
+  /* Overlay to tone down the image and make glass stand out */
+  position: relative;
+}
+/* Dark overlay for better contrast of glass */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* Light mode: soft white overlay; dark mode: dark overlay via CSS variable */
+  background-color: rgba(255, 255, 255, 0.3);
+  z-index: -1;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(8px);
+}
+/* Dark mode overlay */
+.dark body::before {
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+/* ===== Optional: subtle pattern overlay ===== */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: radial-gradient(circle at 20% 50%, rgba(0,84,164,0.05) 0%, transparent 50%),
+                    radial-gradient(circle at 80% 50%, rgba(242,184,39,0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Ensure content is above background */
+#root {
+  position: relative;
+  z-index: 1;
+}

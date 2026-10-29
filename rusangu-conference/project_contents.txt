@@ -1,0 +1,4492 @@
+================================================================================
+PROJECT FILE EXPORT
+================================================================================
+
+
+====================================================================================================
+FILE: create_project_structure.py
+====================================================================================================
+
+import os
+
+# ==========================================
+# Project Structure
+# ==========================================
+
+structure = {
+    "frontend": [
+        "index.html",
+        "package.json",
+        "vite.config.js",
+        "tailwind.config.js",
+        "postcss.config.js",
+
+        "src/main.jsx",
+        "src/App.jsx",
+        "src/index.css",
+
+        "src/api/client.js",
+
+        "src/contexts/AuthContext.jsx",
+        "src/contexts/ModuleContext.jsx",
+
+        "src/hooks/useAuth.js",
+        "src/hooks/useModules.js",
+
+        "src/components/common/Navbar.jsx",
+        "src/components/common/Sidebar.jsx",
+        "src/components/common/ProtectedRoute.jsx",
+        "src/components/common/Layout.jsx",
+
+        "src/components/auth/Login.jsx",
+        "src/components/auth/Register.jsx",
+
+        "src/components/reports/ReportForm.jsx",
+        "src/components/reports/ReportList.jsx",
+        "src/components/reports/ReportReview.jsx",
+        "src/components/reports/reportSchemas.js",
+
+        "src/components/officials/DesignationManager.jsx",
+        "src/components/officials/OfficialDashboard.jsx",
+
+        "src/components/delegates/DelegateApproval.jsx",
+        "src/components/delegates/BadgeGenerator.jsx",
+
+        "src/components/camps/CampList.jsx",
+
+        "src/components/meetings/MeetingList.jsx",
+
+        "src/pages/LoginPage.jsx",
+        "src/pages/RegisterPage.jsx",
+        "src/pages/DashboardPage.jsx",
+        "src/pages/ReportsPage.jsx",
+        "src/pages/OfficialsPage.jsx",
+        "src/pages/DelegatesPage.jsx",
+        "src/pages/CampsPage.jsx",
+        "src/pages/MeetingsPage.jsx",
+    ],
+
+    "backend": [
+        "requirements.txt",
+        "run.py",
+
+        "app/__init__.py",
+        "app/main.py",
+        "app/config.py",
+
+        "app/models/__init__.py",
+        "app/models/user.py",
+        "app/models/district.py",
+        "app/models/module.py",
+        "app/models/user_module.py",
+        "app/models/department.py",
+        "app/models/official_designation.py",
+        "app/models/official_department.py",
+        "app/models/report.py",
+        "app/models/camp.py",
+        "app/models/meeting.py",
+        "app/models/badge.py",
+
+        "app/routes/__init__.py",
+        "app/routes/auth.py",
+        "app/routes/users.py",
+        "app/routes/modules.py",
+        "app/routes/reports.py",
+        "app/routes/officials.py",
+        "app/routes/camps.py",
+        "app/routes/meetings.py",
+        "app/routes/badges.py",
+
+        "app/utils/__init__.py",
+        "app/utils/decorators.py",
+    ]
+}
+
+
+def create_structure(base="."):
+    for root, files in structure.items():
+        root_path = os.path.join(base, root)
+        os.makedirs(root_path, exist_ok=True)
+
+        for file in files:
+            file_path = os.path.join(root_path, file)
+
+            # Create parent directories
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+            # Create empty file if it doesn't exist
+            if not os.path.exists(file_path):
+                with open(file_path, "w", encoding="utf-8") as f:
+                    pass
+
+                print(f"Created: {file_path}")
+            else:
+                print(f"Exists : {file_path}")
+
+    print("\n===================================")
+    print("Project structure created successfully!")
+    print("===================================")
+
+
+if __name__ == "__main__":
+    create_structure()
+
+
+====================================================================================================
+FILE: backend\requirements.txt
+====================================================================================================
+
+Flask==2.3.2
+Flask-SQLAlchemy==3.1.1
+Flask-JWT-Extended==4.5.3
+Flask-CORS==4.0.0
+psycopg2-binary==2.9.6
+Flask-Bcrypt==1.0.1
+reportlab==4.0.4
+python-dotenv==1.0.0
+
+
+====================================================================================================
+FILE: backend\run.py
+====================================================================================================
+
+from app.main import auto_migrate, create_app
+
+if __name__ == '__main__':
+    auto_migrate()
+    app = create_app()
+    app.run(debug=True, host='0.0.0.0', port=5000)
+
+
+====================================================================================================
+FILE: backend\app\__init__.py
+====================================================================================================
+
+from flask import Flask, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from flask_jwt_extended import JWTManager
+from flask_cors import CORS
+from app.config import Config
+
+db = SQLAlchemy()
+jwt = JWTManager()
+
+def create_app():
+    app = Flask(__name__)
+    app.config.from_object(Config)
+    CORS(app, supports_credentials=True, expose_headers=['Authorization'])  # <-- expose header
+    db.init_app(app)
+    jwt.init_app(app)
+
+    # JWT error handlers
+    @jwt.unauthorized_loader
+    def unauthorized_response(callback):
+        return jsonify({'error': 'Missing or invalid token'}), 401
+
+    @jwt.invalid_token_loader
+    def invalid_token_response(callback):
+        return jsonify({'error': 'Invalid token'}), 401
+
+    @jwt.expired_token_loader
+    def expired_token_response(callback, expired_token):
+        return jsonify({'error': 'Token expired'}), 401
+
+    from app.routes.auth import auth_bp
+    from app.routes.users import users_bp
+    from app.routes.modules import modules_bp
+    from app.routes.reports import reports_bp
+    from app.routes.officials import officials_bp
+    from app.routes.camps import camps_bp
+    from app.routes.meetings import meetings_bp
+    from app.routes.badges import badges_bp
+    from app.routes.delegates import delegates_bp
+
+
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(users_bp, url_prefix='/api/users')
+    app.register_blueprint(modules_bp, url_prefix='/api/modules')
+    app.register_blueprint(reports_bp, url_prefix='/api/reports')
+    app.register_blueprint(officials_bp, url_prefix='/api/officials')
+    app.register_blueprint(camps_bp, url_prefix='/api/camps')
+    app.register_blueprint(meetings_bp, url_prefix='/api/meetings')
+    app.register_blueprint(badges_bp, url_prefix='/api/badges')
+    app.register_blueprint(delegates_bp, url_prefix='/api/delegates')
+
+    return app
+
+
+====================================================================================================
+FILE: backend\app\config.py
+====================================================================================================
+
+import os
+
+class Config:
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'postgresql://postgres:1234@localhost/rusangu'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'jwt-secret-change-in-production'
+    JWT_ACCESS_TOKEN_EXPIRES = 86400  # 24 hours
+
+
+====================================================================================================
+FILE: backend\app\main.py
+====================================================================================================
+
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app import create_app, db
+from app.models import (
+    User, District, Module, UserModule, Department,
+    OfficialDesignation, OfficialDepartment, Report,
+    Camp, Meeting, Badge, DelegateAttendance, DelegateMeal
+)
+from sqlalchemy import inspect, text
+
+def auto_migrate():
+    app = create_app()
+    with app.app_context():
+        inspector = inspect(db.engine)
+        db.create_all()
+
+        def add_missing_columns(model):
+            table_name = model.__tablename__
+            if not inspector.has_table(table_name):
+                return
+            existing_columns = {col['name'] for col in inspector.get_columns(table_name)}
+            for column in model.__table__.columns:
+                if column.name not in existing_columns:
+                    col_type = column.type.compile(db.engine)
+                    nullable = '' if column.nullable else 'NOT NULL'
+                    default = f"DEFAULT {column.default.arg}" if column.default else ''
+                    alter = f"ALTER TABLE {table_name} ADD COLUMN {column.name} {col_type} {nullable} {default}"
+                    db.session.execute(text(alter))
+                    db.session.commit()
+                    print(f"Added column {column.name} to {table_name}")
+
+        # Add missing columns for all models
+        models = [User, District, Module, UserModule, Department, OfficialDesignation, OfficialDepartment, Report, Camp, Meeting, Badge, DelegateAttendance, DelegateMeal]
+        for model in models:
+            if inspector.has_table(model.__tablename__):
+                add_missing_columns(model)
+
+        # Seed default modules
+        default_modules = ['use', 'membership', 'reports', 'officials', 'session_meetings_delegate', 'camps', 'meetings', 'session_meetings', 'admin']
+        for mod_name in default_modules:
+            if not Module.query.filter_by(name=mod_name).first():
+                mod = Module(name=mod_name)
+                db.session.add(mod)
+
+        # Seed districts (your list)
+        district_names = [
+            "Bbombo", "Bweengwa", "Chipepo", "Chirundu", "Demu", "Gonhwe District",
+            "Kabulamwanda", "Kaonga", "Kaumba", "Kazungula", "Keemba",
+            "Lusitu Mission District", "Magoye East", "Magoye West",
+            "Mazabuka Central", "Mazabuka North", "Mazabuka South", "Mazabuka West",
+            "Monze Central District", "Monze East", "Monze North", "Monze South",
+            "Munali", "Munyumbwe", "Nadezwe", "Namwala", "Pemba District",
+            "Rusangu", "Rusangu Secondary", "Rusangu University",
+            "Siavonga", "Turnpike Mission District"
+        ]
+        for dname in district_names:
+            if not District.query.filter_by(name=dname).first():
+                dist = District(name=dname)
+                db.session.add(dist)
+
+        # Seed departments
+        dept_names = ['stewardship', 'personal_ministries', 'sabbath_school', 'ministerial', 'family_life', 'apm', 'youth', 'music', 'chaplaincy']
+        for dept_name in dept_names:
+            if not Department.query.filter_by(name=dept_name).first():
+                dept = Department(name=dept_name)
+                db.session.add(dept)
+
+        db.session.commit()
+
+        # Create admin user (if not exists)
+        admin_email = 'admin@rusangu.org'
+        admin_user = User.query.filter_by(email=admin_email).first()
+        if not admin_user:
+            admin_user = User(
+                email=admin_email,
+                first_name='Admin',
+                last_name='User',
+                gender='male',
+                phone='0000000000',
+                guest_type='other',
+                entity='Rusangu Conference',
+                is_active=True
+            )
+            admin_user.set_password('admin123')
+            db.session.add(admin_user)
+            db.session.flush()
+            all_modules = Module.query.all()
+            for mod in all_modules:
+                um = UserModule(user_id=admin_user.id, module_id=mod.id, is_active=True)
+                db.session.add(um)
+            db.session.commit()
+            print("✅ Admin user created: admin@rusangu.org / admin123")
+        else:
+            # Ensure admin has all modules (for new modules)
+            all_modules = Module.query.all()
+            for mod in all_modules:
+                existing = UserModule.query.filter_by(user_id=admin_user.id, module_id=mod.id).first()
+                if not existing:
+                    um = UserModule(user_id=admin_user.id, module_id=mod.id, is_active=True)
+                    db.session.add(um)
+            db.session.commit()
+            print("✅ Admin user already exists, all modules verified.")
+
+        print("✅ Database initialization and seeding complete.")
+
+if __name__ == '__main__':
+    auto_migrate()
+    app = create_app()
+    app.run(debug=True, host='0.0.0.0', port=5000)
+
+
+====================================================================================================
+FILE: backend\app\models\__init__.py
+====================================================================================================
+
+from .user import User
+from .district import District
+from .module import Module
+from .user_module import UserModule
+from .department import Department
+from .official_designation import OfficialDesignation
+from .official_department import OfficialDepartment
+from .report import Report
+from .camp import Camp
+from .meeting import Meeting
+from .badge import Badge
+from .attendance import DelegateAttendance  # new
+from .meal import DelegateMeal
+
+
+====================================================================================================
+FILE: backend\app\models\attendance.py
+====================================================================================================
+
+from app import db
+from datetime import datetime
+
+class DelegateAttendance(db.Model):
+    __tablename__ = 'delegate_attendances'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    session_date = db.Column(db.Date, nullable=False)
+    status = db.Column(db.String(20), default='present')  # present, absent, late
+    check_in_time = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'session_date', name='_user_session_uc'),)
+
+
+====================================================================================================
+FILE: backend\app\models\badge.py
+====================================================================================================
+
+from app import db
+from datetime import datetime
+
+class Badge(db.Model):
+    __tablename__ = 'session_delegate_badges'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    badge_id = db.Column(db.String(50), unique=True, nullable=False)
+    generated_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+====================================================================================================
+FILE: backend\app\models\camp.py
+====================================================================================================
+
+from app import db
+from datetime import datetime
+
+class Camp(db.Model):
+    __tablename__ = 'camps'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=False)
+    description = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+====================================================================================================
+FILE: backend\app\models\department.py
+====================================================================================================
+
+from app import db
+from datetime import datetime
+
+class Department(db.Model):
+    __tablename__ = 'departments'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    official_departments = db.relationship('OfficialDepartment', backref='department', lazy=True)
+
+
+====================================================================================================
+FILE: backend\app\models\district.py
+====================================================================================================
+
+from app import db
+from datetime import datetime
+
+class District(db.Model):
+    __tablename__ = 'districts'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    users = db.relationship('User', backref='district', lazy=True)
+    reports = db.relationship('Report', backref='district', lazy=True)
+    official_designations = db.relationship('OfficialDesignation', backref='district', lazy=True)
+
+
+====================================================================================================
+FILE: backend\app\models\meal.py
+====================================================================================================
+
+from app import db
+from datetime import datetime
+
+class DelegateMeal(db.Model):
+    __tablename__ = 'delegate_meals'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    meal_type = db.Column(db.String(20), nullable=False)  # breakfast, lunch, supper
+    date = db.Column(db.Date, nullable=False)
+    status = db.Column(db.String(20), default='not_taken')  # taken, not_taken
+    taken_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'meal_type', 'date', name='_user_meal_date_uc'),)
+
+
+====================================================================================================
+FILE: backend\app\models\meeting.py
+====================================================================================================
+
+from app import db
+from datetime import datetime
+
+class Meeting(db.Model):
+    __tablename__ = 'meetings'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    agenda = db.Column(db.Text)
+    date_time = db.Column(db.DateTime, nullable=False)
+    location = db.Column(db.String(200))
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+====================================================================================================
+FILE: backend\app\models\module.py
+====================================================================================================
+
+from app import db
+from datetime import datetime
+
+class Module(db.Model):
+    __tablename__ = 'modules'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user_modules = db.relationship('UserModule', backref='module', lazy=True)
+
+
+====================================================================================================
+FILE: backend\app\models\official_department.py
+====================================================================================================
+
+from app import db
+from datetime import datetime
+
+class OfficialDepartment(db.Model):
+    __tablename__ = 'official_departments'
+    id = db.Column(db.Integer, primary_key=True)
+    official_id = db.Column(db.Integer, db.ForeignKey('official_designations.id'), nullable=False)
+    department_id = db.Column(db.Integer, db.ForeignKey('departments.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (db.UniqueConstraint('official_id', 'department_id', name='_official_dept_uc'),)
+
+
+====================================================================================================
+FILE: backend\app\models\official_designation.py
+====================================================================================================
+
+from app import db
+from datetime import datetime
+
+class OfficialDesignation(db.Model):
+    __tablename__ = 'official_designations'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), unique=True, nullable=False)
+    designation_type = db.Column(db.String(30), nullable=False)
+    district_id = db.Column(db.Integer, db.ForeignKey('districts.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    official_departments = db.relationship('OfficialDepartment', backref='official', lazy=True)
+
+
+====================================================================================================
+FILE: backend\app\models\report.py
+====================================================================================================
+
+from app import db
+from datetime import datetime
+from sqlalchemy.dialects.postgresql import JSONB
+
+class Report(db.Model):
+    __tablename__ = 'reports'
+    id = db.Column(db.Integer, primary_key=True)
+    district_id = db.Column(db.Integer, db.ForeignKey('districts.id'), nullable=False)
+    quarter = db.Column(db.Integer, nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    report_type = db.Column(db.String(50), nullable=False)
+    data = db.Column(JSONB, nullable=False)
+    submitted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    status = db.Column(db.String(20), default='draft')
+    submitted_at = db.Column(db.DateTime, nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    reviewed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    reviewed_at = db.Column(db.DateTime, nullable=True)
+
+
+====================================================================================================
+FILE: backend\app\models\user.py
+====================================================================================================
+
+from app import db
+from datetime import datetime
+from flask_bcrypt import generate_password_hash, check_password_hash
+from app.models.user_module import UserModule
+
+class User(db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    first_name = db.Column(db.String(50), nullable=False)
+    middle_name = db.Column(db.String(50))
+    last_name = db.Column(db.String(50), nullable=False)
+    gender = db.Column(db.String(10), nullable=False)
+    phone = db.Column(db.String(20), nullable=False)
+    diet_preference = db.Column(db.String(50))
+    tshirt_size = db.Column(db.String(10))
+    tshirt_color = db.Column(db.String(20))
+    district_id = db.Column(db.Integer, db.ForeignKey('districts.id'), nullable=True)
+    guest_type = db.Column(db.String(20), nullable=False)
+    entity = db.Column(db.String(100))
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Specify foreign_keys to resolve ambiguity with approved_by
+    user_modules = db.relationship('UserModule', foreign_keys='UserModule.user_id', backref='user', lazy=True, cascade='all, delete-orphan')
+    official_designation = db.relationship('OfficialDesignation', backref='user', uselist=False, lazy=True)
+    reports_submitted = db.relationship('Report', foreign_keys='Report.submitted_by', backref='submitter', lazy=True)
+    reports_reviewed = db.relationship('Report', foreign_keys='Report.reviewed_by', backref='reviewer', lazy=True)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password).decode('utf-8')
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def has_module(self, module_name, active_only=True):
+        from app.models.module import Module
+        from app.models.user_module import UserModule
+        module = Module.query.filter_by(name=module_name).first()
+        if not module:
+            return False
+        q = UserModule.query.filter_by(user_id=self.id, module_id=module.id)
+        if active_only:
+            q = q.filter_by(is_active=True)
+        return q.first() is not None
+
+    def get_modules(self, active_only=True):
+        q = UserModule.query.filter_by(user_id=self.id)
+        if active_only:
+            q = q.filter_by(is_active=True)
+        return [um.module.name for um in q.all() if um.module]
+
+
+====================================================================================================
+FILE: backend\app\models\user_module.py
+====================================================================================================
+
+from app import db
+from datetime import datetime
+
+class UserModule(db.Model):
+    __tablename__ = 'user_modules'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    module_id = db.Column(db.Integer, db.ForeignKey('modules.id'), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    assigned_at = db.Column(db.DateTime, default=datetime.utcnow)
+    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    approved_at = db.Column(db.DateTime, nullable=True)
+
+    # Relationship for approved_by (optional)
+    approver = db.relationship('User', foreign_keys=[approved_by], backref='approved_user_modules')
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'module_id', name='_user_module_uc'),)
+
+
+====================================================================================================
+FILE: backend\app\routes\__init__.py
+====================================================================================================
+
+
+
+
+====================================================================================================
+FILE: backend\app\routes\admin.py
+====================================================================================================
+
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from app import db
+from app.models import User, Module, UserModule, District, Department, Report, OfficialDesignation
+from app.utils.decorators import require_admin
+from sqlalchemy import func
+
+admin_bp = Blueprint('admin', __name__)
+
+@admin_bp.route('/stats', methods=['GET'])
+@jwt_required()
+@require_admin()
+def get_stats():
+    total_users = User.query.count()
+    total_reports = Report.query.count()
+    total_districts = District.query.count()
+    total_modules = Module.query.count()
+    total_officials = OfficialDesignation.query.count()
+    # Reports by status
+    reports_by_status = db.session.query(Report.status, func.count(Report.id)).group_by(Report.status).all()
+    status_counts = {status: count for status, count in reports_by_status}
+    return jsonify({
+        'total_users': total_users,
+        'total_reports': total_reports,
+        'total_districts': total_districts,
+        'total_modules': total_modules,
+        'total_officials': total_officials,
+        'reports_by_status': status_counts
+    }), 200
+
+@admin_bp.route('/users', methods=['GET'])
+@jwt_required()
+@require_admin()
+def admin_list_users():
+    # list all users with their modules, designation, etc.
+    users = User.query.all()
+    result = []
+    for u in users:
+        result.append({
+            'id': u.id,
+            'email': u.email,
+            'name': f"{u.first_name} {u.last_name}",
+            'guest_type': u.guest_type,
+            'district': u.district.name if u.district else None,
+            'is_active': u.is_active,
+            'modules': u.get_modules(),
+            'designation': u.official_designation.designation_type if u.official_designation else None,
+        })
+    return jsonify(result), 200
+
+@admin_bp.route('/users/<int:user_id>/toggle-active', methods=['POST'])
+@jwt_required()
+@require_admin()
+def toggle_user_active(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    user.is_active = not user.is_active
+    db.session.commit()
+    return jsonify({'message': f'User active status toggled to {user.is_active}'}), 200
+
+@admin_bp.route('/users/<int:user_id>', methods=['PUT'])
+@jwt_required()
+@require_admin()
+def update_user(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    data = request.get_json()
+    # Allow updating basic fields
+    if 'first_name' in data:
+        user.first_name = data['first_name']
+    if 'last_name' in data:
+        user.last_name = data['last_name']
+    if 'email' in data:
+        user.email = data['email']
+    if 'phone' in data:
+        user.phone = data['phone']
+    if 'diet_preference' in data:
+        user.diet_preference = data['diet_preference']
+    if 'tshirt_size' in data:
+        user.tshirt_size = data['tshirt_size']
+    if 'tshirt_color' in data:
+        user.tshirt_color = data['tshirt_color']
+    if 'district_id' in data:
+        user.district_id = data['district_id']
+    if 'guest_type' in data:
+        user.guest_type = data['guest_type']
+    if 'entity' in data:
+        user.entity = data['entity']
+    db.session.commit()
+    return jsonify({'message': 'User updated'}), 200
+
+
+====================================================================================================
+FILE: backend\app\routes\auth.py
+====================================================================================================
+
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import create_access_token
+from app import db
+from app.models import User, District, Module, UserModule
+
+auth_bp = Blueprint('auth', __name__)
+
+@auth_bp.route('/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    required = ['email', 'password', 'first_name', 'last_name', 'gender', 'phone', 'guest_type']
+    if not all(k in data for k in required):
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    if User.query.filter_by(email=data['email']).first():
+        return jsonify({'error': 'Email already registered'}), 400
+
+    if data['guest_type'] not in ['delegate', 'other']:
+        return jsonify({'error': 'Invalid guest_type'}), 400
+
+    user = User(
+        email=data['email'],
+        first_name=data['first_name'],
+        middle_name=data.get('middle_name'),
+        last_name=data['last_name'],
+        gender=data['gender'],
+        phone=data['phone'],
+        diet_preference=data.get('diet_preference'),
+        tshirt_size=data.get('tshirt_size'),
+        tshirt_color=data.get('tshirt_color'),
+        guest_type=data['guest_type'],
+        is_active=True
+    )
+    user.set_password(data['password'])
+
+    if data['guest_type'] == 'delegate':
+        district_id = data.get('district_id')
+        if not district_id:
+            return jsonify({'error': 'district_id required for delegate'}), 400
+        district = District.query.get(district_id)
+        if not district:
+            return jsonify({'error': 'Invalid district'}), 400
+        user.district_id = district_id
+        user.entity = None
+    else:
+        entity = data.get('entity')
+        if not entity:
+            return jsonify({'error': 'entity required for guest_type other'}), 400
+        user.entity = entity
+        user.district_id = None
+
+    db.session.add(user)
+    db.session.flush()
+
+    # Assign default modules
+    use_mod = Module.query.filter_by(name='use').first()
+    if use_mod:
+        db.session.add(UserModule(user_id=user.id, module_id=use_mod.id, is_active=True))
+
+    if user.guest_type == 'delegate':
+        membership_mod = Module.query.filter_by(name='membership').first()
+        if membership_mod:
+            db.session.add(UserModule(user_id=user.id, module_id=membership_mod.id, is_active=True))
+        session_delegate_mod = Module.query.filter_by(name='session_meetings_delegate').first()
+        if session_delegate_mod:
+            db.session.add(UserModule(user_id=user.id, module_id=session_delegate_mod.id, is_active=False))
+    else:
+        session_meetings_mod = Module.query.filter_by(name='session_meetings').first()
+        if session_meetings_mod:
+            db.session.add(UserModule(user_id=user.id, module_id=session_meetings_mod.id, is_active=True))
+
+    db.session.commit()
+    return jsonify({'message': 'User registered successfully'}), 201
+
+@auth_bp.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Invalid JSON'}), 400
+    email = data.get('email')
+    password = data.get('password')
+    if not email or not password:
+        return jsonify({'error': 'Email and password required'}), 400
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({'error': 'User not found'}), 401
+    if not user.check_password(password):
+        return jsonify({'error': 'Invalid password'}), 401
+    if not user.is_active:
+        return jsonify({'error': 'Account disabled'}), 403
+    if not user.has_module('use', active_only=True):
+        return jsonify({'error': 'No "use" module assigned'}), 403
+    # Ensure identity is string
+    access_token = create_access_token(identity=str(user.id))
+    return jsonify({'access_token': access_token, 'user_id': user.id}), 200
+
+
+====================================================================================================
+FILE: backend\app\routes\badges.py
+====================================================================================================
+
+from flask import Blueprint, request, jsonify, send_file
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from app import db
+from app.models import User, Badge, UserModule, Module
+from app.utils.decorators import require_admin
+import uuid, io
+from datetime import datetime
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+
+badges_bp = Blueprint('badges', __name__)
+
+@badges_bp.route('/generate', methods=['POST'])
+@jwt_required()
+@require_admin()
+def generate_badges():
+    data = request.get_json()
+    user_ids = data.get('user_ids', [])
+    if not user_ids:
+        # Generate for all approved delegates
+        session_delegate_mod = Module.query.filter_by(name='session_meetings_delegate').first()
+        if not session_delegate_mod:
+            return jsonify({'error': 'Module not found'}), 500
+        user_modules = UserModule.query.filter_by(module_id=session_delegate_mod.id, is_active=True).filter(UserModule.approved_by.isnot(None)).all()
+        user_ids = [um.user_id for um in user_modules]
+
+    badges_created = []
+    for uid in user_ids:
+        user = User.query.get(uid)
+        if not user:
+            continue
+        badge_id = str(uuid.uuid4())[:8]
+        existing = Badge.query.filter_by(user_id=uid).first()
+        if existing:
+            existing.badge_id = badge_id
+            existing.generated_at = datetime.utcnow()
+        else:
+            badge = Badge(user_id=uid, badge_id=badge_id)
+            db.session.add(badge)
+        badges_created.append({'user_id': uid, 'badge_id': badge_id})
+    db.session.commit()
+    return jsonify({'badges': badges_created}), 200
+
+@badges_bp.route('/<int:user_id>/download', methods=['GET'])
+@jwt_required()
+def download_badge(user_id):
+    current = User.query.get(get_jwt_identity())
+    if current.id != user_id and not (current.official_designation and current.official_designation.designation_type in ['president', 'executive_secretary']):
+        return jsonify({'error': 'Not authorized'}), 403
+    badge = Badge.query.filter_by(user_id=user_id).first()
+    if not badge:
+        return jsonify({'error': 'Badge not generated'}), 404
+    user = User.query.get(user_id)
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    c.drawString(100, height-100, "RUSANGU CONFERENCE")
+    c.drawString(100, height-130, "DELEGATE ID CARD")
+    c.drawString(100, height-160, f"Name: {user.first_name} {user.last_name}")
+    c.drawString(100, height-190, f"District: {user.district.name if user.district else 'N/A'}")
+    c.drawString(100, height-220, f"Badge ID: {badge.badge_id}")
+    c.save()
+    buffer.seek(0)
+    return send_file(buffer, as_attachment=True, download_name=f'badge_{badge.badge_id}.pdf', mimetype='application/pdf')
+
+
+====================================================================================================
+FILE: backend\app\routes\camps.py
+====================================================================================================
+
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from app import db
+from app.models import Camp
+from app.utils.decorators import require_module
+
+camps_bp = Blueprint('camps', __name__)
+
+@camps_bp.route('/', methods=['GET'])
+@jwt_required()
+@require_module('camps')
+def list_camps():
+    camps = Camp.query.all()
+    return jsonify([{
+        'id': c.id,
+        'name': c.name,
+        'start_date': c.start_date.isoformat(),
+        'end_date': c.end_date.isoformat(),
+        'description': c.description,
+        'created_by': c.created_by,
+        'created_at': c.created_at
+    } for c in camps]), 200
+
+@camps_bp.route('/', methods=['POST'])
+@jwt_required()
+@require_module('camps')
+def create_camp():
+    data = request.get_json()
+    if not data.get('name') or not data.get('start_date') or not data.get('end_date'):
+        return jsonify({'error': 'name, start_date, end_date required'}), 400
+    camp = Camp(
+        name=data['name'],
+        start_date=data['start_date'],
+        end_date=data['end_date'],
+        description=data.get('description'),
+        created_by=get_jwt_identity()
+    )
+    db.session.add(camp)
+    db.session.commit()
+    return jsonify({'message': 'Camp created', 'id': camp.id}), 201
+
+@camps_bp.route('/<int:camp_id>', methods=['PUT'])
+@jwt_required()
+@require_module('camps')
+def update_camp(camp_id):
+    camp = Camp.query.get(camp_id)
+    if not camp:
+        return jsonify({'error': 'Camp not found'}), 404
+    data = request.get_json()
+    if 'name' in data:
+        camp.name = data['name']
+    if 'start_date' in data:
+        camp.start_date = data['start_date']
+    if 'end_date' in data:
+        camp.end_date = data['end_date']
+    if 'description' in data:
+        camp.description = data['description']
+    db.session.commit()
+    return jsonify({'message': 'Camp updated'}), 200
+
+@camps_bp.route('/<int:camp_id>', methods=['DELETE'])
+@jwt_required()
+@require_module('camps')
+def delete_camp(camp_id):
+    camp = Camp.query.get(camp_id)
+    if not camp:
+        return jsonify({'error': 'Camp not found'}), 404
+    db.session.delete(camp)
+    db.session.commit()
+    return jsonify({'message': 'Camp deleted'}), 200
+
+
+====================================================================================================
+FILE: backend\app\routes\delegates.py
+====================================================================================================
+
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from app import db
+from app.models import User, Badge, DelegateAttendance, DelegateMeal, UserModule, Module
+from app.utils.decorators import require_admin
+from datetime import datetime, date
+
+delegates_bp = Blueprint('delegates', __name__)
+
+@delegates_bp.route('/me', methods=['GET'])
+@jwt_required()
+def get_delegate_info():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    if user.guest_type != 'delegate':
+        return jsonify({'error': 'Not a delegate'}), 400
+
+    # Get badge
+    badge = Badge.query.filter_by(user_id=user_id).first()
+    # Get attendance for today
+    today = date.today()
+    attendance = DelegateAttendance.query.filter_by(user_id=user_id, session_date=today).first()
+    # Get meals for today
+    meals = DelegateMeal.query.filter_by(user_id=user_id, date=today).all()
+    meal_status = {m.meal_type: m.status for m in meals}
+
+    return jsonify({
+        'id': user.id,
+        'name': f"{user.first_name} {user.last_name}",
+        'district': user.district.name if user.district else None,
+        'badge_id': badge.badge_id if badge else None,
+        'attendance': attendance.status if attendance else 'not_recorded',
+        'meals': meal_status,
+        'modules': user.get_modules()
+    }), 200
+
+@delegates_bp.route('/attendance', methods=['POST'])
+@jwt_required()
+@require_admin()
+def mark_attendance():
+    data = request.get_json()
+    user_id = data.get('user_id')
+    session_date = data.get('session_date') or date.today().isoformat()
+    status = data.get('status', 'present')  # present, absent, late
+
+    if not user_id:
+        return jsonify({'error': 'user_id required'}), 400
+
+    user = User.query.get(user_id)
+    if not user or user.guest_type != 'delegate':
+        return jsonify({'error': 'Invalid delegate'}), 400
+
+    # Parse date
+    try:
+        session_date_obj = datetime.strptime(session_date, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'Invalid date format'}), 400
+
+    # Check if exists
+    attendance = DelegateAttendance.query.filter_by(user_id=user_id, session_date=session_date_obj).first()
+    if attendance:
+        attendance.status = status
+        attendance.updated_at = datetime.utcnow()
+        if status in ['present', 'late'] and not attendance.check_in_time:
+            attendance.check_in_time = datetime.utcnow()
+    else:
+        attendance = DelegateAttendance(
+            user_id=user_id,
+            session_date=session_date_obj,
+            status=status,
+            check_in_time=datetime.utcnow() if status in ['present', 'late'] else None
+        )
+        db.session.add(attendance)
+    db.session.commit()
+    return jsonify({'message': 'Attendance updated'}), 200
+
+@delegates_bp.route('/meals', methods=['POST'])
+@jwt_required()
+@require_admin()
+def mark_meal():
+    data = request.get_json()
+    user_id = data.get('user_id')
+    meal_type = data.get('meal_type')  # breakfast, lunch, supper
+    status = data.get('status', 'taken')
+    meal_date = data.get('date') or date.today().isoformat()
+
+    if not user_id or not meal_type:
+        return jsonify({'error': 'user_id and meal_type required'}), 400
+    if meal_type not in ['breakfast', 'lunch', 'supper']:
+        return jsonify({'error': 'Invalid meal_type'}), 400
+
+    user = User.query.get(user_id)
+    if not user or user.guest_type != 'delegate':
+        return jsonify({'error': 'Invalid delegate'}), 400
+
+    try:
+        meal_date_obj = datetime.strptime(meal_date, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'Invalid date format'}), 400
+
+    # Check if exists
+    meal = DelegateMeal.query.filter_by(user_id=user_id, meal_type=meal_type, date=meal_date_obj).first()
+    if meal:
+        meal.status = status
+        meal.taken_at = datetime.utcnow() if status == 'taken' else None
+        meal.updated_at = datetime.utcnow()
+    else:
+        meal = DelegateMeal(
+            user_id=user_id,
+            meal_type=meal_type,
+            date=meal_date_obj,
+            status=status,
+            taken_at=datetime.utcnow() if status == 'taken' else None
+        )
+        db.session.add(meal)
+    db.session.commit()
+    return jsonify({'message': 'Meal updated'}), 200
+
+@delegates_bp.route('/badges/generate', methods=['POST'])
+@jwt_required()
+@require_admin()
+def generate_badges():
+    data = request.get_json()
+    user_ids = data.get('user_ids', [])
+    if not user_ids:
+        # Generate for all approved delegates
+        session_delegate_mod = Module.query.filter_by(name='session_meetings_delegate').first()
+        if not session_delegate_mod:
+            return jsonify({'error': 'Module not found'}), 500
+        user_modules = UserModule.query.filter_by(module_id=session_delegate_mod.id, is_active=True).filter(UserModule.approved_by.isnot(None)).all()
+        user_ids = [um.user_id for um in user_modules]
+
+    badges_created = []
+    for uid in user_ids:
+        user = User.query.get(uid)
+        if not user:
+            continue
+        import uuid
+        badge_id = str(uuid.uuid4())[:8]
+        existing = Badge.query.filter_by(user_id=uid).first()
+        if existing:
+            existing.badge_id = badge_id
+            existing.generated_at = datetime.utcnow()
+        else:
+            badge = Badge(user_id=uid, badge_id=badge_id)
+            db.session.add(badge)
+        badges_created.append({'user_id': uid, 'badge_id': badge_id})
+    db.session.commit()
+    return jsonify({'badges': badges_created}), 200
+
+@delegates_bp.route('/badges/<int:user_id>/download', methods=['GET'])
+@jwt_required()
+def download_badge(user_id):
+    current = User.query.get(get_jwt_identity())
+    if current.id != user_id and not (current.official_designation and current.official_designation.designation_type in ['president', 'executive_secretary', 'director']):
+        return jsonify({'error': 'Not authorized'}), 403
+    badge = Badge.query.filter_by(user_id=user_id).first()
+    if not badge:
+        return jsonify({'error': 'Badge not generated'}), 404
+    user = User.query.get(user_id)
+    from io import BytesIO
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    c.drawString(100, height-100, "RUSANGU CONFERENCE")
+    c.drawString(100, height-130, "DELEGATE BADGE")
+    c.drawString(100, height-160, f"Name: {user.first_name} {user.last_name}")
+    c.drawString(100, height-190, f"District: {user.district.name if user.district else 'N/A'}")
+    c.drawString(100, height-220, f"Badge ID: {badge.badge_id}")
+    c.save()
+    buffer.seek(0)
+    from flask import send_file
+    return send_file(buffer, as_attachment=True, download_name=f'badge_{badge.badge_id}.pdf', mimetype='application/pdf')
+
+
+====================================================================================================
+FILE: backend\app\routes\meetings.py
+====================================================================================================
+
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from app import db
+from app.models import Meeting
+from app.utils.decorators import require_module
+
+meetings_bp = Blueprint('meetings', __name__)
+
+@meetings_bp.route('/', methods=['GET'])
+@jwt_required()
+@require_module('meetings')
+def list_meetings():
+    meetings = Meeting.query.all()
+    return jsonify([{
+        'id': m.id,
+        'title': m.title,
+        'agenda': m.agenda,
+        'date_time': m.date_time.isoformat(),
+        'location': m.location,
+        'created_by': m.created_by,
+        'created_at': m.created_at
+    } for m in meetings]), 200
+
+@meetings_bp.route('/', methods=['POST'])
+@jwt_required()
+@require_module('meetings')
+def create_meeting():
+    data = request.get_json()
+    if not data.get('title') or not data.get('date_time'):
+        return jsonify({'error': 'title and date_time required'}), 400
+    meeting = Meeting(
+        title=data['title'],
+        agenda=data.get('agenda'),
+        date_time=data['date_time'],
+        location=data.get('location'),
+        created_by=get_jwt_identity()
+    )
+    db.session.add(meeting)
+    db.session.commit()
+    return jsonify({'message': 'Meeting created', 'id': meeting.id}), 201
+
+@meetings_bp.route('/<int:meeting_id>', methods=['PUT'])
+@jwt_required()
+@require_module('meetings')
+def update_meeting(meeting_id):
+    meeting = Meeting.query.get(meeting_id)
+    if not meeting:
+        return jsonify({'error': 'Meeting not found'}), 404
+    data = request.get_json()
+    if 'title' in data:
+        meeting.title = data['title']
+    if 'agenda' in data:
+        meeting.agenda = data['agenda']
+    if 'date_time' in data:
+        meeting.date_time = data['date_time']
+    if 'location' in data:
+        meeting.location = data['location']
+    db.session.commit()
+    return jsonify({'message': 'Meeting updated'}), 200
+
+@meetings_bp.route('/<int:meeting_id>', methods=['DELETE'])
+@jwt_required()
+@require_module('meetings')
+def delete_meeting(meeting_id):
+    meeting = Meeting.query.get(meeting_id)
+    if not meeting:
+        return jsonify({'error': 'Meeting not found'}), 404
+    db.session.delete(meeting)
+    db.session.commit()
+    return jsonify({'message': 'Meeting deleted'}), 200
+
+
+====================================================================================================
+FILE: backend\app\routes\modules.py
+====================================================================================================
+
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required
+from app import db
+from app.models import Module, Department  # <-- import Department
+from app.utils.decorators import require_admin
+
+modules_bp = Blueprint('modules', __name__)
+
+# Remove trailing slash by using empty string
+@modules_bp.route('/', methods=['GET'])
+@jwt_required()
+def list_modules():
+    modules = Module.query.all()
+    return jsonify([{'id': m.id, 'name': m.name} for m in modules]), 200
+
+@modules_bp.route('', methods=['POST'])
+@jwt_required()
+@require_admin()
+def create_module():
+    data = request.get_json()
+    name = data.get('name')
+    if not name:
+        return jsonify({'error': 'Module name required'}), 400
+    if Module.query.filter_by(name=name).first():
+        return jsonify({'error': 'Module already exists'}), 400
+    mod = Module(name=name)
+    db.session.add(mod)
+    db.session.commit()
+    return jsonify({'message': 'Module created'}), 201
+
+@modules_bp.route('/<int:module_id>', methods=['DELETE'])
+@jwt_required()
+@require_admin()
+def delete_module(module_id):
+    mod = Module.query.get(module_id)
+    if not mod:
+        return jsonify({'error': 'Module not found'}), 404
+    db.session.delete(mod)
+    db.session.commit()
+    return jsonify({'message': 'Module deleted'}), 200
+
+@modules_bp.route('/departments', methods=['POST'])
+@jwt_required()
+@require_admin()
+def create_department():
+    data = request.get_json()
+    name = data.get('name')
+    if not name:
+        return jsonify({'error': 'Name required'}), 400
+    if Department.query.filter_by(name=name).first():
+        return jsonify({'error': 'Department already exists'}), 400
+    dept = Department(name=name)
+    db.session.add(dept)
+    db.session.commit()
+    return jsonify({'message': 'Department created'}), 201
+
+@modules_bp.route('/departments/<int:dept_id>', methods=['DELETE'])
+@jwt_required()
+@require_admin()
+def delete_department(dept_id):
+    dept = Department.query.get(dept_id)
+    if not dept:
+        return jsonify({'error': 'Department not found'}), 404
+    from app.models import OfficialDepartment
+    if OfficialDepartment.query.filter_by(department_id=dept_id).first():
+        return jsonify({'error': 'Department has associated officials, cannot delete'}), 400
+    db.session.delete(dept)
+    db.session.commit()
+    return jsonify({'message': 'Department deleted'}), 200
+
+@modules_bp.route('/departments', methods=['GET'])
+@jwt_required()
+def list_departments():
+    depts = Department.query.all()
+    return jsonify([{'id': d.id, 'name': d.name} for d in depts]), 200
+
+
+====================================================================================================
+FILE: backend\app\routes\officials.py
+====================================================================================================
+
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from app import db
+from app.models import User, OfficialDesignation, OfficialDepartment, Department, District, Module, UserModule
+from app.utils.decorators import require_admin
+
+officials_bp = Blueprint('officials', __name__)
+
+@officials_bp.route('/designate', methods=['POST'])
+@jwt_required()
+@require_admin()
+def designate_official():
+    data = request.get_json()
+    user_id = data.get('user_id')
+    designation_type = data.get('designation_type')
+    district_id = data.get('district_id')  # for district_pastor
+    department_ids = data.get('department_ids', [])  # for director
+
+    if not user_id or not designation_type:
+        return jsonify({'error': 'user_id and designation_type required'}), 400
+    valid = ['president', 'executive_secretary', 'cfo', 'director', 'district_pastor', 'conference_official', 'secretary']
+    if designation_type not in valid:
+        return jsonify({'error': 'Invalid designation_type'}), 400
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    # Ensure user has 'officials' and 'reports' modules
+    for mod_name in ['officials', 'reports']:
+        mod = Module.query.filter_by(name=mod_name).first()
+        if mod and not UserModule.query.filter_by(user_id=user_id, module_id=mod.id).first():
+            db.session.add(UserModule(user_id=user_id, module_id=mod.id, is_active=True))
+
+    # Check if already designated
+    existing = OfficialDesignation.query.filter_by(user_id=user_id).first()
+    if existing:
+        existing.designation_type = designation_type
+        existing.district_id = district_id if designation_type == 'district_pastor' else None
+        od = existing
+    else:
+        od = OfficialDesignation(
+            user_id=user_id,
+            designation_type=designation_type,
+            district_id=district_id if designation_type == 'district_pastor' else None
+        )
+        db.session.add(od)
+        db.session.flush()
+
+    # Manage departments
+    # Clear existing
+    OfficialDepartment.query.filter_by(official_id=od.id).delete()
+    if designation_type == 'director':
+        for dept_id in department_ids:
+            dept = Department.query.get(dept_id)
+            if dept:
+                db.session.add(OfficialDepartment(official_id=od.id, department_id=dept_id))
+    elif designation_type == 'district_pastor' and department_ids:
+        # district pastors can also have departments? The requirement says some can be assigned departments, so we allow.
+        for dept_id in department_ids:
+            dept = Department.query.get(dept_id)
+            if dept:
+                db.session.add(OfficialDepartment(official_id=od.id, department_id=dept_id))
+
+    db.session.commit()
+    return jsonify({'message': 'Official designated'}), 200
+
+@officials_bp.route('/<int:user_id>/designation', methods=['DELETE'])
+@jwt_required()
+@require_admin()
+def remove_designation(user_id):
+    od = OfficialDesignation.query.filter_by(user_id=user_id).first()
+    if not od:
+        return jsonify({'error': 'No designation found'}), 404
+    db.session.delete(od)
+    db.session.commit()
+    return jsonify({'message': 'Designation removed'}), 200
+
+@officials_bp.route('/list', methods=['GET'])
+@jwt_required()
+def list_officials():
+    # Only admin or officials can view
+    user = User.query.get(get_jwt_identity())
+    if not user.official_designation and not user.has_module('officials'):
+        return jsonify({'error': 'Not authorized'}), 403
+    officials = OfficialDesignation.query.all()
+    result = []
+    for od in officials:
+        result.append({
+            'user_id': od.user_id,
+            'user_name': f"{od.user.first_name} {od.user.last_name}",
+            'designation': od.designation_type,
+            'district': od.district.name if od.district else None,
+            'departments': [dep.department.name for dep in od.official_departments]
+        })
+    return jsonify(result), 200
+
+
+====================================================================================================
+FILE: backend\app\routes\reports.py
+====================================================================================================
+
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from app import db
+from app.models import Report, District, User
+from app.utils.decorators import require_module, require_official_designation
+from datetime import datetime
+from sqlalchemy import func, case
+
+reports_bp = Blueprint('reports', __name__)
+
+@reports_bp.route('/', methods=['POST'])
+@jwt_required()
+@require_module('reports')
+def create_report():
+    data = request.get_json()
+    required = ['district_id', 'quarter', 'year', 'report_type', 'data']
+    if not all(k in data for k in required):
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    valid_types = ['stewardship', 'personal_ministries', 'sabbath_school', 'ministerial', 'family_life', 'apm', 'youth', 'music', 'chaplaincy']
+    if data['report_type'] not in valid_types:
+        return jsonify({'error': 'Invalid report_type'}), 400
+
+    district = District.query.get(data['district_id'])
+    if not district:
+        return jsonify({'error': 'Invalid district'}), 404
+
+    user = User.query.get(get_jwt_identity())
+    # Check submission permission: either own district, or official with sufficient rights
+    allowed = False
+    if user.district_id == data['district_id']:
+        allowed = True
+    if user.official_designation:
+        if user.official_designation.designation_type == 'district_pastor' and user.official_designation.district_id == data['district_id']:
+            allowed = True
+        if user.official_designation.designation_type in ['director', 'executive_secretary', 'president']:
+            allowed = True
+    if not allowed:
+        return jsonify({'error': 'Not authorized to submit for this district'}), 403
+
+    existing = Report.query.filter_by(
+        district_id=data['district_id'],
+        quarter=data['quarter'],
+        year=data['year'],
+        report_type=data['report_type']
+    ).first()
+    if existing:
+        return jsonify({'error': 'Report already exists for this period'}), 400
+
+    report = Report(
+        district_id=data['district_id'],
+        quarter=data['quarter'],
+        year=data['year'],
+        report_type=data['report_type'],
+        data=data['data'],
+        submitted_by=user.id,
+        status='draft'
+    )
+    db.session.add(report)
+    db.session.commit()
+    return jsonify({'message': 'Report created', 'id': report.id}), 201
+
+@reports_bp.route('/<int:report_id>', methods=['PUT'])
+@jwt_required()
+@require_module('reports')
+def update_report(report_id):
+    report = Report.query.get(report_id)
+    if not report:
+        return jsonify({'error': 'Report not found'}), 404
+    user = User.query.get(get_jwt_identity())
+    if report.status != 'draft':
+        return jsonify({'error': 'Cannot update a non-draft report'}), 400
+    if report.submitted_by != user.id:
+        return jsonify({'error': 'Only submitter can edit draft'}), 403
+
+    data = request.get_json()
+    if 'data' in data:
+        report.data = data['data']
+    if 'status' in data and data['status'] in ['draft', 'submitted']:
+        report.status = data['status']
+        if report.status == 'submitted':
+            report.submitted_at = datetime.utcnow()
+    report.updated_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'message': 'Report updated'}), 200
+
+@reports_bp.route('/<int:report_id>/submit', methods=['POST'])
+@jwt_required()
+@require_module('reports')
+def submit_report(report_id):
+    report = Report.query.get(report_id)
+    if not report:
+        return jsonify({'error': 'Report not found'}), 404
+    user = User.query.get(get_jwt_identity())
+    if report.submitted_by != user.id:
+        return jsonify({'error': 'Not authorized to submit this report'}), 403
+    if report.status == 'submitted':
+        return jsonify({'error': 'Report already submitted'}), 400
+    report.status = 'submitted'
+    report.submitted_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'message': 'Report submitted'}), 200
+
+@reports_bp.route('/<int:report_id>/review', methods=['POST'])
+@jwt_required()
+def review_report(report_id):
+    user = User.query.get(get_jwt_identity())
+    if not user.official_designation:
+        return jsonify({'error': 'Only officials can review'}), 403
+    designation = user.official_designation.designation_type
+    report = Report.query.get(report_id)
+    if not report:
+        return jsonify({'error': 'Report not found'}), 404
+
+    # Permission checks
+    if designation == 'district_pastor' and user.official_designation.district_id != report.district_id:
+        return jsonify({'error': 'Not authorized for this district'}), 403
+    if designation == 'director':
+        dept_names = [od.department.name for od in user.official_designation.official_departments]
+        if report.report_type not in dept_names:
+            return jsonify({'error': 'Not authorized for this department'}), 403
+    if designation == 'cfo' and report.report_type != 'stewardship':
+        return jsonify({'error': 'CFO can only review stewardship reports'}), 403
+    # president and executive_secretary can review all
+
+    data = request.get_json()
+    action = data.get('action')  # approved, rejected, reviewed
+    if action not in ['approved', 'rejected', 'reviewed']:
+        return jsonify({'error': 'Invalid action'}), 400
+    report.status = action
+    report.reviewed_by = user.id
+    report.reviewed_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'message': f'Report {action}'}), 200
+
+@reports_bp.route('/list', methods=['GET'])
+@jwt_required()
+def list_reports():
+    user = User.query.get(get_jwt_identity())
+    query = Report.query
+    if user.official_designation:
+        des = user.official_designation.designation_type
+        if des == 'district_pastor':
+            query = query.filter_by(district_id=user.official_designation.district_id)
+        elif des == 'director':
+            dept_names = [od.department.name for od in user.official_designation.official_departments]
+            if dept_names:
+                query = query.filter(Report.report_type.in_(dept_names))
+            else:
+                return jsonify({'error': 'No departments assigned'}), 403
+        elif des == 'cfo':
+            query = query.filter_by(report_type='stewardship')
+        # president and executive_secretary see all
+    else:
+        # regular users see only their own reports
+        if user.has_module('reports'):
+            query = query.filter_by(submitted_by=user.id)
+        else:
+            return jsonify({'error': 'No permission'}), 403
+
+    # Apply filters from query params
+    quarter = request.args.get('quarter')
+    year = request.args.get('year')
+    district_id = request.args.get('district_id')
+    report_type = request.args.get('report_type')
+    status = request.args.get('status')
+    if quarter:
+        query = query.filter_by(quarter=int(quarter))
+    if year:
+        query = query.filter_by(year=int(year))
+    if district_id:
+        query = query.filter_by(district_id=int(district_id))
+    if report_type:
+        query = query.filter_by(report_type=report_type)
+    if status:
+        query = query.filter_by(status=status)
+
+    reports = query.all()
+    result = [{
+        'id': r.id,
+        'district': r.district.name,
+        'district_id': r.district_id,
+        'quarter': r.quarter,
+        'year': r.year,
+        'report_type': r.report_type,
+        'status': r.status,
+        'submitted_at': r.submitted_at,
+        'data': r.data
+    } for r in reports]
+    return jsonify(result), 200
+
+@reports_bp.route('/consolidated', methods=['GET'])
+@jwt_required()
+def consolidated_reports():
+    # Only for executive_secretary and president
+    user = User.query.get(get_jwt_identity())
+    if not user.official_designation or user.official_designation.designation_type not in ['executive_secretary', 'president']:
+        return jsonify({'error': 'Not authorized'}), 403
+
+    # Get summary by district, quarter, year, report_type
+    results = db.session.query(
+        Report.district_id,
+        District.name.label('district_name'),
+        Report.quarter,
+        Report.year,
+        Report.report_type,
+        func.count(Report.id).label('total_reports'),
+        func.sum(case([(Report.status == 'submitted', 1)], else_=0)).label('submitted'),
+        func.sum(case([(Report.status == 'reviewed', 1)], else_=0)).label('reviewed'),
+        func.sum(case([(Report.status == 'approved', 1)], else_=0)).label('approved'),
+        func.sum(case([(Report.status == 'rejected', 1)], else_=0)).label('rejected')
+    ).join(District).group_by(Report.district_id, District.name, Report.quarter, Report.year, Report.report_type).all()
+
+    # Convert to dict
+    output = []
+    for row in results:
+        output.append({
+            'district_id': row.district_id,
+            'district_name': row.district_name,
+            'quarter': row.quarter,
+            'year': row.year,
+            'report_type': row.report_type,
+            'total_reports': row.total_reports,
+            'submitted': row.submitted,
+            'reviewed': row.reviewed,
+            'approved': row.approved,
+            'rejected': row.rejected,
+        })
+    return jsonify(output), 200
+
+
+====================================================================================================
+FILE: backend\app\routes\users.py
+====================================================================================================
+
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from app import db
+from app.models import User, Module, UserModule, District, OfficialDesignation, Department, Report
+from app.utils.decorators import require_module, require_admin
+from datetime import datetime
+
+users_bp = Blueprint('users', __name__)
+
+# Also list users for admin
+@users_bp.route('/', methods=['GET'])
+@jwt_required()
+@require_admin()
+def list_users():
+    # Support optional guest_type filtering
+    guest_type = request.args.get('guest_type')
+    query = User.query
+    if guest_type:
+        query = query.filter_by(guest_type=guest_type)
+    users = query.all()
+    return jsonify([{
+        'id': u.id,
+        'email': u.email,
+        'name': f"{u.first_name} {u.last_name}",
+        'guest_type': u.guest_type,
+        'district': u.district.name if u.district else None,
+        'is_active': u.is_active,
+        'modules': u.get_modules()
+    } for u in users]), 200
+
+
+@users_bp.route('/me', methods=['GET'])
+@jwt_required()
+def get_current_user():
+    # Debug: print the Authorization header
+    from flask import request
+    print("🔍 Authorization header:", request.headers.get('Authorization'))
+    user_id_str = get_jwt_identity()
+    print("🔍 User ID from token (string):", user_id_str)
+    try:
+        user_id = int(user_id_str)
+    except ValueError:
+        return jsonify({'error': 'Invalid user ID in token'}), 401
+    print("🔍 Converted User ID:", user_id)
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    return jsonify({
+        'id': user.id,
+        'email': user.email,
+        'first_name': user.first_name,
+        'middle_name': user.middle_name,
+        'last_name': user.last_name,
+        'gender': user.gender,
+        'phone': user.phone,
+        'diet_preference': user.diet_preference,
+        'tshirt_size': user.tshirt_size,
+        'tshirt_color': user.tshirt_color,
+        'district': user.district.name if user.district else None,
+        'district_id': user.district_id,
+        'guest_type': user.guest_type,
+        'entity': user.entity,
+        'modules': user.get_modules(),
+        'is_official': bool(user.official_designation),
+        'designation': user.official_designation.designation_type if user.official_designation else None,
+        'department_ids': [od.department_id for od in user.official_designation.official_departments] if user.official_designation else [],
+    }), 200
+
+@users_bp.route('/<int:user_id>/modules', methods=['POST'])
+@jwt_required()
+@require_admin()
+def assign_module(user_id):
+    data = request.get_json()
+    module_name = data.get('module_name')
+    active = data.get('active', True)
+
+    module = Module.query.filter_by(name=module_name).first()
+    if not module:
+        return jsonify({'error': 'Module not found'}), 404
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    existing = UserModule.query.filter_by(user_id=user_id, module_id=module.id).first()
+    if existing:
+        existing.is_active = active
+    else:
+        um = UserModule(user_id=user_id, module_id=module.id, is_active=active)
+        db.session.add(um)
+    db.session.commit()
+    return jsonify({'message': 'Module assigned/updated'}), 200
+
+@users_bp.route('/<int:user_id>/modules', methods=['DELETE'])
+@jwt_required()
+@require_admin()
+def remove_module(user_id):
+    data = request.get_json()
+    module_name = data.get('module_name')
+    module = Module.query.filter_by(name=module_name).first()
+    if not module:
+        return jsonify({'error': 'Module not found'}), 404
+    UserModule.query.filter_by(user_id=user_id, module_id=module.id).delete()
+    db.session.commit()
+    return jsonify({'message': 'Module removed'}), 200
+
+@users_bp.route('/<int:user_id>/approve-delegate', methods=['POST'])
+@jwt_required()
+def approve_delegate(user_id):
+    # Only district pastor or admin can approve
+    current_id_str = get_jwt_identity()
+    try:
+        current_id = int(current_id_str)
+    except ValueError:
+        return jsonify({'error': 'Invalid user ID in token'}), 401
+    current = User.query.get(current_id)
+    if not current:
+        return jsonify({'error': 'User not found'}), 404
+    if not current.official_designation:
+        return jsonify({'error': 'Only officials can approve'}), 403
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    if user.guest_type != 'delegate':
+        return jsonify({'error': 'User is not a delegate'}), 400
+    
+    # Check permission
+    if current.official_designation.designation_type == 'district_pastor':
+        if current.official_designation.district_id != user.district_id:
+            return jsonify({'error': 'Not authorized for this district'}), 403
+    elif current.official_designation.designation_type not in ['president', 'executive_secretary']:
+        return jsonify({'error': 'Only district pastor, president, or executive secretary can approve'}), 403
+
+    # Find session_meetings_delegate module
+    mod = Module.query.filter_by(name='session_meetings_delegate').first()
+    if not mod:
+        return jsonify({'error': 'Module not found'}), 500
+    um = UserModule.query.filter_by(user_id=user_id, module_id=mod.id).first()
+    if not um:
+        return jsonify({'error': 'Delegate module not assigned'}), 400
+    um.is_active = True
+    um.approved_by = current.id
+    um.approved_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'message': 'Delegate approved'}), 200
+
+
+@users_bp.route('/districts', methods=['POST'])
+@jwt_required()
+@require_admin()
+def create_district():
+    data = request.get_json()
+    name = data.get('name')
+    if not name:
+        return jsonify({'error': 'Name required'}), 400
+    if District.query.filter_by(name=name).first():
+        return jsonify({'error': 'District already exists'}), 400
+    district = District(name=name)
+    db.session.add(district)
+    db.session.commit()
+    return jsonify({'message': 'District created'}), 201
+
+@users_bp.route('/districts', methods=['GET'])
+def list_districts():
+    districts = District.query.all()
+    return jsonify([{'id': d.id, 'name': d.name} for d in districts]), 200
+
+@users_bp.route('/districts/<int:district_id>', methods=['DELETE'])
+@jwt_required()
+@require_admin()
+def delete_district(district_id):
+    district = District.query.get(district_id)
+    if not district:
+        return jsonify({'error': 'District not found'}), 404
+    if User.query.filter_by(district_id=district_id).first() or Report.query.filter_by(district_id=district_id).first():
+        return jsonify({'error': 'District has associated data, cannot delete'}), 400
+    db.session.delete(district)
+    db.session.commit()
+    return jsonify({'message': 'District deleted'}), 200
+
+@users_bp.route('/<int:user_id>/active', methods=['PUT'])
+@jwt_required()
+@require_admin()
+def toggle_user_active(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    data = request.get_json()
+    if 'active' not in data:
+        return jsonify({'error': 'active field required'}), 400
+    user.is_active = data['active']
+    db.session.commit()
+    return jsonify({'message': 'User active status updated'}), 200
+
+@users_bp.route('/stats', methods=['GET'])
+@jwt_required()
+@require_admin()
+def get_stats():
+    user_count = User.query.count()
+    report_count = Report.query.count()
+    district_count = District.query.count()
+    dept_count = Department.query.count()
+    official_count = OfficialDesignation.query.count()
+    return jsonify({
+        'users': user_count,
+        'reports': report_count,
+        'districts': district_count,
+        'departments': dept_count,
+        'officials': official_count
+    }), 200
+
+
+====================================================================================================
+FILE: backend\app\utils\__init__.py
+====================================================================================================
+
+
+
+
+====================================================================================================
+FILE: backend\app\utils\decorators.py
+====================================================================================================
+
+from functools import wraps
+from flask import jsonify
+from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request
+from app.models import User
+
+def require_module(module_name, active_only=True):
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            verify_jwt_in_request()
+            user_id = get_jwt_identity()
+            user = User.query.get(user_id)
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+            if not user.has_module(module_name, active_only):
+                return jsonify({'error': f'Module "{module_name}" required'}), 403
+            return f(*args, **kwargs)
+        return decorated
+    return decorator
+
+def require_official_designation(designation_type):
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            verify_jwt_in_request()
+            user_id = get_jwt_identity()
+            user = User.query.get(user_id)
+            if not user or not user.official_designation:
+                return jsonify({'error': 'Not an official'}), 403
+            if user.official_designation.designation_type != designation_type:
+                return jsonify({'error': f'Designation {designation_type} required'}), 403
+            return f(*args, **kwargs)
+        return decorated
+    return decorator
+
+def require_admin():
+    """
+    Admin: either has 'admin' module OR is president/executive_secretary.
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            verify_jwt_in_request()
+            user_id = get_jwt_identity()
+            user = User.query.get(user_id)
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+            # Check for 'admin' module (active)
+            if user.has_module('admin', active_only=True):
+                return f(*args, **kwargs)
+            # Or official designation president/executive_secretary
+            if user.official_designation and user.official_designation.designation_type in ['president', 'executive_secretary']:
+                return f(*args, **kwargs)
+            return jsonify({'error': 'Admin privileges required'}), 403
+        return decorated
+    return decorator
+
+
+====================================================================================================
+FILE: frontend\index.html
+====================================================================================================
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rusangu Conference</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+
+
+====================================================================================================
+FILE: frontend\package.json
+====================================================================================================
+
+{
+  "name": "rusangu-conference",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "axios": "^1.4.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hook-form": "^7.45.4",
+    "react-router-dom": "^6.14.2",
+    "@hookform/resolvers": "^3.1.1",
+    "zod": "^3.21.4"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.15",
+    "@types/react-dom": "^18.2.7",
+    "@vitejs/plugin-react": "^4.0.3",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.27",
+    "tailwindcss": "^3.3.3",
+    "vite": "^4.4.5"
+  }
+}
+
+
+====================================================================================================
+FILE: frontend\postcss.config.js
+====================================================================================================
+
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+
+
+====================================================================================================
+FILE: frontend\tailwind.config.js
+====================================================================================================
+
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+
+
+====================================================================================================
+FILE: frontend\vite.config.js
+====================================================================================================
+
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    proxy: {
+      '/api': 'http://localhost:5000'  // proxy to backend
+    }
+  }
+})
+
+
+====================================================================================================
+FILE: frontend\src\App.jsx
+====================================================================================================
+
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './hooks/useAuth';
+import ProtectedRoute from './components/common/ProtectedRoute';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import DashboardPage from './pages/DashboardPage';
+import ReportsPage from './pages/ReportsPage';
+import OfficialsPage from './pages/OfficialsPage';
+import DelegatesPage from './pages/DelegatesPage';
+import MyDelegatePage from './pages/MyDelegatePage';
+import CampsPage from './pages/CampsPage';
+import MeetingsPage from './pages/MeetingsPage';
+import AdminPage from './pages/AdminPage';
+import Layout from './components/common/Layout';
+
+function App() {
+  const { user } = useAuth();
+
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      
+      <Route element={<Layout />}>
+        <Route path="/" element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/reports" element={
+          <ProtectedRoute requiredModule="reports">
+            <ReportsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/officials" element={
+          <ProtectedRoute requiredModule="officials">
+            <OfficialsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/session_meetings_delegate" element={
+          <ProtectedRoute requiredModule="session_meetings_delegate">
+            <DelegatesPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/my-delegate" element={
+  <ProtectedRoute requiredModule="session_meetings_delegate">
+    <MyDelegatePage />
+  </ProtectedRoute>
+} />
+        <Route path="/camps" element={
+          <ProtectedRoute requiredModule="camps">
+            <CampsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/meetings" element={
+          <ProtectedRoute requiredModule="meetings">
+            <MeetingsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin" element={
+          <ProtectedRoute requiredModule="admin">
+            <AdminPage />
+          </ProtectedRoute>
+        } />
+        <Route path="*" element={<Navigate to="/" />} />
+      </Route>
+    </Routes>
+  );
+}
+
+export default App;
+
+
+====================================================================================================
+FILE: frontend\src\index.css
+====================================================================================================
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+====================================================================================================
+FILE: frontend\src\main.jsx
+====================================================================================================
+
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import './index.css'
+import { AuthProvider } from './contexts/AuthContext'
+import { BrowserRouter } from 'react-router-dom'
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </BrowserRouter>
+  </React.StrictMode>,
+)
+
+
+====================================================================================================
+FILE: frontend\src\api\client.js
+====================================================================================================
+
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: '/api',  // Direct backend URL – no proxy
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Response interceptor: handle 401 (excluding login)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && !error.config.url.includes('/auth/login')) {
+      localStorage.removeItem('access_token');
+      delete api.defaults.headers.common['Authorization'];
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default api;
+
+
+====================================================================================================
+FILE: frontend\src\components\admin\AdminDashboard.jsx
+====================================================================================================
+
+import React, { useState, useEffect } from 'react';
+import api from '../../api/client';
+
+const AdminDashboard = () => {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const res = await api.get('/admin/stats');
+      setStats(res.data);
+    } catch (error) {
+      console.error('Error fetching stats', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) return <div>Loading statistics...</div>;
+  if (!stats) return <div>No stats available.</div>;
+
+  return (
+    <div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white p-4 rounded shadow">
+          <h3 className="text-gray-500 text-sm">Total Users</h3>
+          <p className="text-2xl font-bold">{stats.total_users}</p>
+        </div>
+        <div className="bg-white p-4 rounded shadow">
+          <h3 className="text-gray-500 text-sm">Total Reports</h3>
+          <p className="text-2xl font-bold">{stats.total_reports}</p>
+        </div>
+        <div className="bg-white p-4 rounded shadow">
+          <h3 className="text-gray-500 text-sm">Total Districts</h3>
+          <p className="text-2xl font-bold">{stats.total_districts}</p>
+        </div>
+        <div className="bg-white p-4 rounded shadow">
+          <h3 className="text-gray-500 text-sm">Total Officials</h3>
+          <p className="text-2xl font-bold">{stats.total_officials}</p>
+        </div>
+      </div>
+      <div className="bg-white p-4 rounded shadow">
+        <h3 className="text-lg font-semibold mb-2">Reports by Status</h3>
+        <ul>
+          {Object.entries(stats.reports_by_status || {}).map(([status, count]) => (
+            <li key={status} className="flex justify-between border-b py-1">
+              <span className="capitalize">{status}</span>
+              <span>{count}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+};
+
+export default AdminDashboard;
+
+
+====================================================================================================
+FILE: frontend\src\components\admin\AdminLayout.jsx
+====================================================================================================
+
+import React from 'react';
+
+const tabs = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'users', label: 'Users' },
+  { id: 'modules', label: 'Modules' },
+  { id: 'reports', label: 'Reports' },
+];
+
+const AdminLayout = ({ activeTab, setActiveTab }) => {
+  return (
+    <div className="border-b border-gray-200">
+      <nav className="-mb-px flex space-x-8">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === tab.id
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+    </div>
+  );
+};
+
+export default AdminLayout;
+
+
+====================================================================================================
+FILE: frontend\src\components\admin\DepartmentManager.jsx
+====================================================================================================
+
+import React, { useState, useEffect } from 'react';
+import api from '../../api/client';
+
+const DepartmentManager = () => {
+  const [departments, setDepartments] = useState([]);
+  const [newDept, setNewDept] = useState('');
+
+  const fetchDepartments = async () => {
+    const res = await api.get('/modules/departments');
+    setDepartments(res.data);
+  };
+
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
+
+  const createDept = async () => {
+    if (!newDept.trim()) return;
+    await api.post('/modules/departments', { name: newDept });
+    setNewDept('');
+    fetchDepartments();
+  };
+
+  const deleteDept = async (id) => {
+    if (window.confirm('Delete this department?')) {
+      await api.delete(`/modules/departments/${id}`);
+      fetchDepartments();
+    }
+  };
+
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-4">Manage Departments</h2>
+      <div className="flex gap-2 mb-4">
+        <input type="text" value={newDept} onChange={(e) => setNewDept(e.target.value)} placeholder="New department name" className="border p-2 rounded flex-1" />
+        <button onClick={createDept} className="bg-blue-600 text-white px-4 py-2 rounded">Add Department</button>
+      </div>
+      <ul className="list-disc pl-5">
+        {departments.map(d => (
+          <li key={d.id} className="flex justify-between items-center border-b py-2">
+            <span>{d.name}</span>
+            <button onClick={() => deleteDept(d.id)} className="text-red-600">Delete</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+export default DepartmentManager;
+
+
+====================================================================================================
+FILE: frontend\src\components\admin\DistrictManager.jsx
+====================================================================================================
+
+import React, { useState, useEffect } from 'react';
+import api from '../../api/client';
+
+const DistrictManager = () => {
+  const [districts, setDistricts] = useState([]);
+  const [newDistrict, setNewDistrict] = useState('');
+
+  const fetchDistricts = async () => {
+    const res = await api.get('/users/districts');
+    setDistricts(res.data);
+  };
+
+  useEffect(() => {
+    fetchDistricts();
+  }, []);
+
+  const createDistrict = async () => {
+    if (!newDistrict.trim()) return;
+    await api.post('/users/districts', { name: newDistrict });
+    setNewDistrict('');
+    fetchDistricts();
+  };
+
+  const deleteDistrict = async (id) => {
+    if (window.confirm('Delete this district? This will remove all associations.')) {
+      await api.delete(`/users/districts/${id}`);
+      fetchDistricts();
+    }
+  };
+
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-4">Manage Districts</h2>
+      <div className="flex gap-2 mb-4">
+        <input type="text" value={newDistrict} onChange={(e) => setNewDistrict(e.target.value)} placeholder="New district name" className="border p-2 rounded flex-1" />
+        <button onClick={createDistrict} className="bg-blue-600 text-white px-4 py-2 rounded">Add District</button>
+      </div>
+      <ul className="list-disc pl-5">
+        {districts.map(d => (
+          <li key={d.id} className="flex justify-between items-center border-b py-2">
+            <span>{d.name}</span>
+            <button onClick={() => deleteDistrict(d.id)} className="text-red-600">Delete</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+export default DistrictManager;
+
+
+====================================================================================================
+FILE: frontend\src\components\admin\ModuleManagement.jsx
+====================================================================================================
+
+import React, { useState, useEffect } from 'react';
+import api from '../../api/client';
+
+const ModuleManagement = () => {
+  const [modules, setModules] = useState([]);
+  const [newModule, setNewModule] = useState('');
+
+  const fetchModules = async () => {
+    const res = await api.get('/modules');
+    setModules(res.data);
+  };
+
+  useEffect(() => {
+    fetchModules();
+  }, []);
+
+  const addModule = async () => {
+    if (!newModule.trim()) return;
+    await api.post('/modules', { name: newModule });
+    setNewModule('');
+    fetchModules();
+  };
+
+  const deleteModule = async (id) => {
+    if (!window.confirm('Delete this module?')) return;
+    await api.delete(`/modules/${id}`);
+    fetchModules();
+  };
+
+  return (
+    <div>
+      <h2 className="text-xl font-semibold mb-4">Module Management</h2>
+      <div className="flex mb-4">
+        <input
+          type="text"
+          value={newModule}
+          onChange={(e) => setNewModule(e.target.value)}
+          placeholder="New module name"
+          className="border p-2 rounded-l flex-1"
+        />
+        <button onClick={addModule} className="bg-blue-600 text-white px-4 py-2 rounded-r">Add Module</button>
+      </div>
+      <ul className="bg-white rounded shadow">
+        {modules.map(m => (
+          <li key={m.id} className="flex justify-between items-center border-b p-3">
+            <span>{m.name}</span>
+            <button onClick={() => deleteModule(m.id)} className="text-red-600">Delete</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+export default ModuleManagement;
+
+
+====================================================================================================
+FILE: frontend\src\components\admin\ModuleManager.jsx
+====================================================================================================
+
+import React, { useState, useEffect } from 'react';
+import api from '../../api/client';
+
+const ModuleManager = () => {
+  const [modules, setModules] = useState([]);
+  const [newModule, setNewModule] = useState('');
+
+  const fetchModules = async () => {
+    const res = await api.get('modules/');
+    setModules(res.data);
+  };
+
+  useEffect(() => {
+    fetchModules();
+  }, []);
+
+  const createModule = async () => {
+    if (!newModule.trim()) return;
+    await api.post('/modules', { name: newModule });
+    setNewModule('');
+    fetchModules();
+  };
+
+  const deleteModule = async (id) => {
+    if (window.confirm('Delete this module?')) {
+      await api.delete(`/modules/${id}`);
+      fetchModules();
+    }
+  };
+
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-4">Manage Modules</h2>
+      <div className="flex gap-2 mb-4">
+        <input type="text" value={newModule} onChange={(e) => setNewModule(e.target.value)} placeholder="New module name" className="border p-2 rounded flex-1" />
+        <button onClick={createModule} className="bg-blue-600 text-white px-4 py-2 rounded">Add Module</button>
+      </div>
+      <ul className="list-disc pl-5">
+        {modules.map(m => (
+          <li key={m.id} className="flex justify-between items-center border-b py-2">
+            <span>{m.name}</span>
+            <button onClick={() => deleteModule(m.id)} className="text-red-600">Delete</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+export default ModuleManager;
+
+
+====================================================================================================
+FILE: frontend\src\components\admin\Statistics.jsx
+====================================================================================================
+
+import React, { useState, useEffect } from 'react';
+import api from '../../api/client';
+
+const Statistics = () => {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await api.get('/users/stats');
+        setStats(res.data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  if (loading) return <div>Loading stats...</div>;
+  if (!stats) return <div>Error loading stats.</div>;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="bg-white p-6 rounded shadow text-center">
+        <h3 className="text-lg font-semibold">Total Users</h3>
+        <p className="text-3xl font-bold text-blue-600">{stats.users}</p>
+      </div>
+      <div className="bg-white p-6 rounded shadow text-center">
+        <h3 className="text-lg font-semibold">Reports</h3>
+        <p className="text-3xl font-bold text-green-600">{stats.reports}</p>
+      </div>
+      <div className="bg-white p-6 rounded shadow text-center">
+        <h3 className="text-lg font-semibold">Districts</h3>
+        <p className="text-3xl font-bold text-purple-600">{stats.districts}</p>
+      </div>
+      <div className="bg-white p-6 rounded shadow text-center">
+        <h3 className="text-lg font-semibold">Departments</h3>
+        <p className="text-3xl font-bold text-yellow-600">{stats.departments}</p>
+      </div>
+      <div className="bg-white p-6 rounded shadow text-center">
+        <h3 className="text-lg font-semibold">Officials</h3>
+        <p className="text-3xl font-bold text-red-600">{stats.officials}</p>
+      </div>
+    </div>
+  );
+};
+
+export default Statistics;
+
+
+====================================================================================================
+FILE: frontend\src\components\admin\UserManagement.jsx
+====================================================================================================
+
+import React, { useState, useEffect } from 'react';
+import api from '../../api/client';
+
+const UserManagement = () => {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [editData, setEditData] = useState({});
+  const [modulesList, setModulesList] = useState([]);
+
+  useEffect(() => {
+    fetchUsers();
+    fetchModules();
+  }, []);
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/admin/users');
+      setUsers(res.data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchModules = async () => {
+    const res = await api.get('/modules');
+    setModulesList(res.data);
+  };
+
+  const toggleActive = async (userId) => {
+    await api.post(`/admin/users/${userId}/toggle-active`);
+    fetchUsers();
+  };
+
+  const updateUser = async (userId) => {
+    await api.put(`/admin/users/${userId}`, editData);
+    setEditing(null);
+    fetchUsers();
+  };
+
+  const assignModule = async (userId, moduleName) => {
+    await api.post(`/users/${userId}/modules`, { module_name: moduleName, active: true });
+    fetchUsers();
+  };
+
+  const removeModule = async (userId, moduleName) => {
+    await api.delete(`/users/${userId}/modules`, { data: { module_name: moduleName } });
+    fetchUsers();
+  };
+
+  return (
+    <div>
+      <h2 className="text-xl font-semibold mb-4">User Management</h2>
+      {loading && <p>Loading...</p>}
+      <div className="overflow-x-auto">
+        <table className="min-w-full bg-white">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="py-2 px-4 border-b text-left">Name</th>
+              <th className="py-2 px-4 border-b text-left">Email</th>
+              <th className="py-2 px-4 border-b text-left">District</th>
+              <th className="py-2 px-4 border-b text-left">Type</th>
+              <th className="py-2 px-4 border-b text-left">Active</th>
+              <th className="py-2 px-4 border-b text-left">Modules</th>
+              <th className="py-2 px-4 border-b text-left">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map(user => (
+              <tr key={user.id} className="border-b">
+                <td className="py-2 px-4">
+                  {editing === user.id ? (
+                    <input type="text" value={editData.name || ''} onChange={(e) => setEditData({...editData, name: e.target.value})} className="border p-1" />
+                  ) : (
+                    user.name
+                  )}
+                </td>
+                <td className="py-2 px-4">{user.email}</td>
+                <td className="py-2 px-4">{user.district || 'N/A'}</td>
+                <td className="py-2 px-4">{user.guest_type}</td>
+                <td className="py-2 px-4">{user.is_active ? 'Yes' : 'No'}</td>
+                <td className="py-2 px-4">
+                  <div className="flex flex-wrap gap-1">
+                    {user.modules.map(m => (
+                      <span key={m} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded flex items-center">
+                        {m}
+                        <button onClick={() => removeModule(user.id, m)} className="ml-1 text-red-500">×</button>
+                      </span>
+                    ))}
+                    <select onChange={(e) => assignModule(user.id, e.target.value)} className="text-xs border rounded p-1">
+                      <option value="">Add module</option>
+                      {modulesList.filter(m => !user.modules.includes(m.name)).map(m => (
+                        <option key={m.id} value={m.name}>{m.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </td>
+                <td className="py-2 px-4">
+                  <button onClick={() => toggleActive(user.id)} className="text-blue-600 mr-2">
+                    {user.is_active ? 'Disable' : 'Enable'}
+                  </button>
+                  {editing === user.id ? (
+                    <button onClick={() => updateUser(user.id)} className="text-green-600">Save</button>
+                  ) : (
+                    <button onClick={() => { setEditing(user.id); setEditData({ name: user.name }); }} className="text-gray-600">Edit</button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+export default UserManagement;
+
+
+====================================================================================================
+FILE: frontend\src\components\admin\UserManager.jsx
+====================================================================================================
+
+import React, { useState, useEffect } from 'react';
+import api from '../../api/client';
+
+const UserManager = () => {
+  const [users, setUsers] = useState([]);
+  const [modules, setModules] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedModule, setSelectedModule] = useState('');
+
+  const fetchData = async () => {
+    try {
+      const [usersRes, modulesRes] = await Promise.all([
+        api.get('users/'),
+        api.get('modules/')
+      ]);
+      setUsers(usersRes.data);
+      setModules(modulesRes.data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const toggleUserActive = async (userId, currentActive) => {
+    await api.put(`/users/${userId}/active`, { active: !currentActive });
+    fetchData();
+  };
+
+  const assignModule = async (userId) => {
+    if (!selectedModule) return;
+    await api.post(`/users/${userId}/modules`, { module_name: selectedModule, active: true });
+    setSelectedModule('');
+    fetchData();
+  };
+
+  const removeModule = async (userId, moduleName) => {
+    await api.delete(`/users/${userId}/modules`, { data: { module_name: moduleName } });
+    fetchData();
+  };
+
+  if (loading) return <div>Loading users...</div>;
+
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-4">Manage Users</h2>
+      <div className="overflow-x-auto">
+        <table className="min-w-full bg-white border">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="px-4 py-2 border">Name</th>
+              <th className="px-4 py-2 border">Email</th>
+              <th className="px-4 py-2 border">Guest Type</th>
+              <th className="px-4 py-2 border">District</th>
+              <th className="px-4 py-2 border">Modules</th>
+              <th className="px-4 py-2 border">Active</th>
+              <th className="px-4 py-2 border">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map(u => (
+              <tr key={u.id} className="border-b">
+                <td className="px-4 py-2">{u.name}</td>
+                <td className="px-4 py-2">{u.email}</td>
+                <td className="px-4 py-2">{u.guest_type}</td>
+                <td className="px-4 py-2">{u.district || 'N/A'}</td>
+                <td className="px-4 py-2">
+                  {u.modules.map(m => (
+                    <span key={m} className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded mr-1 text-xs">
+                      {m}
+                      <button onClick={() => removeModule(u.id, m)} className="ml-1 text-red-600">×</button>
+                    </span>
+                  ))}
+                </td>
+                <td className="px-4 py-2">
+                  <button onClick={() => toggleUserActive(u.id, u.is_active)} className={`px-2 py-1 rounded text-xs ${u.is_active ? 'bg-green-500 text-white' : 'bg-gray-400 text-white'}`}>
+                    {u.is_active ? 'Active' : 'Inactive'}
+                  </button>
+                </td>
+                <td className="px-4 py-2">
+                  <select value={selectedUser === u.id ? selectedModule : ''} onChange={(e) => { setSelectedUser(u.id); setSelectedModule(e.target.value); }} className="border p-1 mr-2">
+                    <option value="">Assign Module</option>
+                    {modules.filter(m => !u.modules.includes(m.name)).map(m => (
+                      <option key={m.id} value={m.name}>{m.name}</option>
+                    ))}
+                  </select>
+                  {selectedUser === u.id && selectedModule && (
+                    <button onClick={() => assignModule(u.id)} className="bg-blue-600 text-white px-2 py-1 rounded text-xs">Add</button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+export default UserManager;
+
+
+====================================================================================================
+FILE: frontend\src\components\auth\Login.jsx
+====================================================================================================
+
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+
+const Login = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    try {
+      await login(email, password);
+      navigate('/');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Login failed');
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="max-w-md w-full bg-white p-8 rounded shadow-md">
+        <h2 className="text-2xl font-bold text-center mb-6">Login</h2>
+        {error && <div className="bg-red-100 text-red-700 p-2 rounded mb-4">{error}</div>}
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-gray-700">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full border rounded p-2 mt-1"
+              required
+            />
+          </div>
+          <div className="mb-6">
+            <label className="block text-gray-700">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full border rounded p-2 mt-1"
+              required
+            />
+          </div>
+          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+            Login
+          </button>
+        </form>
+        <p className="mt-4 text-center text-sm text-gray-600">
+          Don't have an account? <Link to="/register" className="text-blue-600 hover:underline">Register</Link>
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default Login;
+
+
+====================================================================================================
+FILE: frontend\src\components\auth\Register.jsx
+====================================================================================================
+
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import api from '../../api/client';
+
+const Register = () => {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    first_name: '',
+    middle_name: '',
+    last_name: '',
+    gender: '',
+    phone: '',
+    diet_preference: '',
+    tshirt_size: '',
+    tshirt_color: '',
+    guest_type: 'delegate',
+    district_id: '',
+    entity: '',
+  });
+  const [districts, setDistricts] = useState([]);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Fetch districts for dropdown
+    api.get('/users/districts') // we need to create a districts route; we'll use /users? or create one; for now we'll use a static list or we can fetch from /api/districts (not yet created). We'll create a simple route in backend for districts list.
+    .then(res => setDistricts(res.data))
+    .catch(() => setDistricts([]));
+  }, []);
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    try {
+      await api.post('/auth/register', formData);
+      setSuccess(true);
+      setTimeout(() => navigate('/login'), 2000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Registration failed');
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="max-w-2xl w-full bg-white p-8 rounded shadow-md">
+        <h2 className="text-2xl font-bold text-center mb-6">Register</h2>
+        {success && <div className="bg-green-100 text-green-700 p-2 rounded mb-4">Registration successful! Redirecting to login...</div>}
+        {error && <div className="bg-red-100 text-red-700 p-2 rounded mb-4">{error}</div>}
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input type="email" name="email" placeholder="Email" value={formData.email} onChange={handleChange} className="border p-2 rounded" required />
+          <input type="password" name="password" placeholder="Password" value={formData.password} onChange={handleChange} className="border p-2 rounded" required />
+          <input type="text" name="first_name" placeholder="First Name" value={formData.first_name} onChange={handleChange} className="border p-2 rounded" required />
+          <input type="text" name="middle_name" placeholder="Middle Name (Optional)" value={formData.middle_name} onChange={handleChange} className="border p-2 rounded" />
+          <input type="text" name="last_name" placeholder="Last Name" value={formData.last_name} onChange={handleChange} className="border p-2 rounded" required />
+          <select name="gender" value={formData.gender} onChange={handleChange} className="border p-2 rounded" required>
+            <option value="">Select Gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+          <input type="tel" name="phone" placeholder="Phone" value={formData.phone} onChange={handleChange} className="border p-2 rounded" required />
+          <input type="text" name="diet_preference" placeholder="Diet Preference" value={formData.diet_preference} onChange={handleChange} className="border p-2 rounded" />
+          <input type="text" name="tshirt_size" placeholder="T-Shirt Size (Optional)" value={formData.tshirt_size} onChange={handleChange} className="border p-2 rounded" />
+          <input type="text" name="tshirt_color" placeholder="T-Shirt Color (Optional)" value={formData.tshirt_color} onChange={handleChange} className="border p-2 rounded" />
+          
+          <div className="col-span-2">
+            <label className="block text-gray-700">Guest Type</label>
+            <select name="guest_type" value={formData.guest_type} onChange={handleChange} className="border p-2 rounded w-full" required>
+              <option value="delegate">Delegate</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          {formData.guest_type === 'delegate' && (
+            <div className="col-span-2">
+              <label className="block text-gray-700">District</label>
+              <select name="district_id" value={formData.district_id} onChange={handleChange} className="border p-2 rounded w-full" required>
+                <option value="">Select District</option>
+                {districts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </div>
+          )}
+
+          {formData.guest_type === 'other' && (
+            <div className="col-span-2">
+              <input type="text" name="entity" placeholder="Entity (e.g., Organization name)" value={formData.entity} onChange={handleChange} className="border p-2 rounded w-full" required />
+            </div>
+          )}
+
+          <div className="col-span-2">
+            <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Register</button>
+          </div>
+        </form>
+        <p className="mt-4 text-center text-sm text-gray-600">
+          Already have an account? <Link to="/login" className="text-blue-600 hover:underline">Login</Link>
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default Register;
+
+
+====================================================================================================
+FILE: frontend\src\components\camps\CampForm.jsx
+====================================================================================================
+
+import React, { useState } from 'react';
+
+const CampForm = ({ onSubmit }) => {
+  const [name, setName] = useState('');
+  const [start_date, setStartDate] = useState('');
+  const [end_date, setEndDate] = useState('');
+  const [description, setDescription] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit({ name, start_date, end_date, description });
+    setName('');
+    setStartDate('');
+    setEndDate('');
+    setDescription('');
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-white p-4 rounded shadow">
+      <h2 className="text-lg font-semibold mb-2">Create Camp</h2>
+      <div className="mb-2">
+        <label className="block text-sm font-medium">Name</label>
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full border rounded px-3 py-2" />
+      </div>
+      <div className="mb-2">
+        <label className="block text-sm font-medium">Start Date</label>
+        <input type="date" value={start_date} onChange={(e) => setStartDate(e.target.value)} required className="w-full border rounded px-3 py-2" />
+      </div>
+      <div className="mb-2">
+        <label className="block text-sm font-medium">End Date</label>
+        <input type="date" value={end_date} onChange={(e) => setEndDate(e.target.value)} required className="w-full border rounded px-3 py-2" />
+      </div>
+      <div className="mb-2">
+        <label className="block text-sm font-medium">Description</label>
+        <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="w-full border rounded px-3 py-2" rows="3" />
+      </div>
+      <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Create</button>
+    </form>
+  );
+};
+
+export default CampForm;
+
+
+====================================================================================================
+FILE: frontend\src\components\camps\CampList.jsx
+====================================================================================================
+
+import React, { useState } from 'react';
+
+const CampList = ({ camps, onCreate, onUpdate, onDelete }) => {
+  const [editing, setEditing] = useState(null);
+  const [formData, setFormData] = useState({ name: '', start_date: '', end_date: '', description: '' });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (editing) {
+      onUpdate(editing, formData);
+    } else {
+      onCreate(formData);
+    }
+    setEditing(null);
+    setFormData({ name: '', start_date: '', end_date: '', description: '' });
+  };
+
+  const startEdit = (camp) => {
+    setEditing(camp.id);
+    setFormData({ name: camp.name, start_date: camp.start_date, end_date: camp.end_date, description: camp.description });
+  };
+
+  return (
+    <div>
+      <form onSubmit={handleSubmit} className="bg-white p-4 rounded shadow mb-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <input type="text" placeholder="Name" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="border p-2 rounded" required />
+        <input type="date" value={formData.start_date} onChange={(e) => setFormData({...formData, start_date: e.target.value})} className="border p-2 rounded" required />
+        <input type="date" value={formData.end_date} onChange={(e) => setFormData({...formData, end_date: e.target.value})} className="border p-2 rounded" required />
+        <div className="flex space-x-2">
+          <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">{editing ? 'Update' : 'Add'}</button>
+          {editing && <button onClick={() => { setEditing(null); setFormData({ name: '', start_date: '', end_date: '', description: '' }); }} className="bg-gray-400 text-white px-4 py-2 rounded">Cancel</button>}
+        </div>
+      </form>
+      <ul className="space-y-2">
+        {camps.map(c => (
+          <li key={c.id} className="bg-white p-3 rounded shadow flex justify-between items-center">
+            <div>
+              <h3 className="font-semibold">{c.name}</h3>
+              <p className="text-sm text-gray-600">{c.start_date} to {c.end_date}</p>
+              <p className="text-sm">{c.description}</p>
+            </div>
+            <div className="space-x-2">
+              <button onClick={() => startEdit(c)} className="text-blue-600">Edit</button>
+              <button onClick={() => onDelete(c.id)} className="text-red-600">Delete</button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+export default CampList;
+
+
+====================================================================================================
+FILE: frontend\src\components\common\Layout.jsx
+====================================================================================================
+
+import React from 'react';
+import { Outlet } from 'react-router-dom';
+import Navbar from './Navbar';
+
+const Layout = () => {
+  return (
+    <div className="min-h-screen bg-gray-100">
+      <Navbar />
+      <main className="container mx-auto p-4">
+        <Outlet />
+      </main>
+    </div>
+  );
+};
+
+export default Layout;
+
+
+====================================================================================================
+FILE: frontend\src\components\common\Navbar.jsx
+====================================================================================================
+
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import { useModules } from '../../hooks/useModules';
+
+const Navbar = () => {
+  const { user, logout } = useAuth();
+  const { hasModule } = useModules();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  return (
+    <nav className="bg-blue-700 text-white p-4 shadow-md">
+      <div className="container mx-auto flex justify-between items-center">
+        <Link to="/" className="text-2xl font-bold">Rusangu Conference</Link>
+        <div className="flex items-center space-x-4">
+          {user && (
+            <>
+              {hasModule('admin') && (
+                <Link to="/admin" className="hover:underline">Admin</Link>
+              )}
+              <span className="hidden md:inline">Welcome, {user.first_name}</span>
+              <button onClick={handleLogout} className="bg-red-600 px-4 py-2 rounded hover:bg-red-700">Logout</button>
+            </>
+          )}
+        </div>
+      </div>
+    </nav>
+  );
+};
+
+export default Navbar;
+
+
+====================================================================================================
+FILE: frontend\src\components\common\ProtectedRoute.jsx
+====================================================================================================
+
+import React from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import { useModules } from '../../hooks/useModules';
+
+const ProtectedRoute = ({ children, requiredModule }) => {
+  const { user, loading } = useAuth();
+  const { hasModule } = useModules();
+
+  if (loading) return <div className="p-8 text-center">Loading...</div>;
+  if (!user) return <Navigate to="/login" />;
+  
+  if (requiredModule && !hasModule(requiredModule)) {
+    return (
+      <div className="p-8 text-center">
+        <h2 className="text-2xl font-bold text-red-600">Access Denied</h2>
+        <p>You do not have the required module: {requiredModule}</p>
+      </div>
+    );
+  }
+  return children;
+};
+
+export default ProtectedRoute;
+
+
+====================================================================================================
+FILE: frontend\src\components\common\Sidebar.jsx
+====================================================================================================
+
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { useModules } from '../../hooks/useModules';
+
+const Sidebar = () => {
+  const { modules } = useModules();
+
+  // Define module routes and labels
+  const moduleMap = {
+    membership: { label: 'Membership', icon: '👥' },
+    reports: { label: 'Reports', icon: '📊' },
+    officials: { label: 'Officials', icon: '👔' },
+    session_meetings_delegate: { label: 'Delegate', icon: '🪪' },
+    camps: { label: 'Camps', icon: '🏕️' },
+    meetings: { label: 'Meetings', icon: '📅' },
+    session_meetings: { label: 'Session Meetings', icon: '📋' },
+  };
+
+  return (
+    <div className="w-64 bg-gray-100 h-full p-4 shadow-lg">
+      <h3 className="font-bold text-lg mb-4">Modules</h3>
+      <ul className="space-y-2">
+        {modules.map((mod) => {
+          const info = moduleMap[mod];
+          if (!info) return null;
+          return (
+            <li key={mod}>
+              <Link
+                to={`/${mod}`}
+                className="block p-2 rounded hover:bg-blue-200 transition"
+              >
+                {info.icon} {info.label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+};
+
+export default Sidebar;
+
+
+====================================================================================================
+FILE: frontend\src\components\delegates\AttendanceManager.jsx
+====================================================================================================
+
+import React, { useState } from 'react';
+import api from '../../api/client';
+
+const AttendanceManager = ({ delegates, onUpdate }) => {
+  const [selectedUser, setSelectedUser] = useState('');
+  const [status, setStatus] = useState('present');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const markAttendance = async (e) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    await api.post('/delegates/attendance', {
+      user_id: selectedUser,
+      session_date: date,
+      status: status
+    });
+    onUpdate();
+    setSelectedUser('');
+  };
+
+  const getStatusBadge = (user) => {
+    // We need to fetch attendance for each user; we don't have it in the list.
+    // We'll skip inline status for simplicity; or we could fetch per user.
+    return '—';
+  };
+
+  return (
+    <div>
+      <form onSubmit={markAttendance} className="bg-white p-4 rounded shadow mb-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <select value={selectedUser} onChange={(e) => setSelectedUser(e.target.value)} className="border p-2 rounded" required>
+          <option value="">Select Delegate</option>
+          {delegates.map(d => (
+            <option key={d.id} value={d.id}>{d.name}</option>
+          ))}
+        </select>
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="border p-2 rounded" required />
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="border p-2 rounded">
+          <option value="present">Present</option>
+          <option value="absent">Absent</option>
+          <option value="late">Late</option>
+        </select>
+        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">Mark Attendance</button>
+      </form>
+      <div className="bg-white p-4 rounded shadow">
+        <h3 className="font-semibold mb-2">All Delegates</h3>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="text-left p-2">Name</th>
+              <th className="text-left p-2">District</th>
+              <th className="text-left p-2">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {delegates.map(d => (
+              <tr key={d.id} className="border-t">
+                <td className="p-2">{d.name}</td>
+                <td className="p-2">{d.district || 'N/A'}</td>
+                <td className="p-2">{getStatusBadge(d)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+export default AttendanceManager;
+
+
+====================================================================================================
+FILE: frontend\src\components\delegates\BadgeGenerator.jsx
+====================================================================================================
+
+import React, { useState } from 'react';
+import api from '../../api/client';
+
+const BadgeGenerator = ({ delegates, onUpdate }) => {
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [generating, setGenerating] = useState(false);
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.length === delegates.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(delegates.map(d => d.id));
+    }
+  };
+
+  const generate = async (all = false) => {
+    setGenerating(true);
+    try {
+      await api.post('/delegates/badges/generate', { user_ids: all ? [] : selectedIds });
+      onUpdate();
+      setSelectedIds([]);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+ const downloadBadge = async (userId) => {
+  try {
+    const response = await api.get(`/delegates/badges/${userId}/download`, {
+      responseType: 'blob'
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `badge_${userId}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Download failed:', error);
+    alert('Failed to download badge. Please try again.');
+  }
+};
+
+  return (
+    <div>
+      <div className="flex gap-2 mb-4">
+        <button onClick={() => generate(false)} disabled={selectedIds.length === 0 || generating} className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50">
+          Generate Selected ({selectedIds.length})
+        </button>
+        <button onClick={() => generate(true)} disabled={generating} className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50">
+          Generate All
+        </button>
+        <button onClick={toggleAll} className="bg-gray-300 px-4 py-2 rounded">
+          {selectedIds.length === delegates.length ? 'Deselect All' : 'Select All'}
+        </button>
+      </div>
+      <div className="bg-white p-4 rounded shadow">
+        <h3 className="font-semibold mb-2">Delegates</h3>
+        <ul className="space-y-1 max-h-96 overflow-y-auto">
+          {delegates.map(d => {
+            const hasBadge = d.modules && d.modules.includes('session_meetings_delegate');
+            return (
+              <li key={d.id} className="flex items-center justify-between border-b py-1">
+                <label className="flex items-center space-x-2">
+                  <input type="checkbox" checked={selectedIds.includes(d.id)} onChange={() => toggleSelect(d.id)} />
+                  <span>{d.name}</span>
+                  <span className="text-xs text-gray-500">{d.district || 'N/A'}</span>
+                </label>
+                <div>
+                  {hasBadge && <span className="text-green-600 text-xs mr-2">✓ Approved</span>}
+                  <button onClick={() => downloadBadge(d.id)} className="text-blue-600 underline text-sm">Download</button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+  );
+};
+
+export default BadgeGenerator;
+
+
+====================================================================================================
+FILE: frontend\src\components\delegates\DelegateApproval.jsx
+====================================================================================================
+
+import React from 'react';
+import api from '../../api/client';
+
+const DelegateApproval = ({ delegates, onUpdate }) => {
+  const pending = delegates.filter(d => d.guest_type === 'delegate' && !d.modules.includes('session_meetings_delegate'));
+
+  const approve = async (userId) => {
+    await api.post(`/users/${userId}/approve-delegate`);
+    onUpdate();
+  };
+
+  if (!pending.length) return <p>No pending delegates.</p>;
+
+  return (
+    <ul className="space-y-2">
+      {pending.map(d => (
+        <li key={d.id} className="flex justify-between items-center border-b py-2">
+          <span>{d.name} - {d.district}</span>
+          <button onClick={() => approve(d.id)} className="bg-green-600 text-white px-3 py-1 rounded">Approve</button>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+export default DelegateApproval;
+
+
+====================================================================================================
+FILE: frontend\src\components\delegates\MealManager.jsx
+====================================================================================================
+
+import React, { useState } from 'react';
+import api from '../../api/client';
+
+const MealManager = ({ delegates, onUpdate }) => {
+  const [selectedUser, setSelectedUser] = useState('');
+  const [mealType, setMealType] = useState('breakfast');
+  const [status, setStatus] = useState('taken');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const markMeal = async (e) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    await api.post('/delegates/meals', {
+      user_id: selectedUser,
+      meal_type: mealType,
+      status: status,
+      date: date
+    });
+    onUpdate();
+    setSelectedUser('');
+  };
+
+  return (
+    <div>
+      <form onSubmit={markMeal} className="bg-white p-4 rounded shadow mb-4 grid grid-cols-1 md:grid-cols-5 gap-4">
+        <select value={selectedUser} onChange={(e) => setSelectedUser(e.target.value)} className="border p-2 rounded" required>
+          <option value="">Select Delegate</option>
+          {delegates.map(d => (
+            <option key={d.id} value={d.id}>{d.name}</option>
+          ))}
+        </select>
+        <select value={mealType} onChange={(e) => setMealType(e.target.value)} className="border p-2 rounded">
+          <option value="breakfast">Breakfast</option>
+          <option value="lunch">Lunch</option>
+          <option value="supper">Supper</option>
+        </select>
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="border p-2 rounded">
+          <option value="taken">Taken</option>
+          <option value="not_taken">Not Taken</option>
+        </select>
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="border p-2 rounded" required />
+        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">Mark Meal</button>
+      </form>
+      <div className="bg-white p-4 rounded shadow">
+        <h3 className="font-semibold mb-2">Delegates Meal Status</h3>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="text-left p-2">Name</th>
+              <th className="text-left p-2">Breakfast</th>
+              <th className="text-left p-2">Lunch</th>
+              <th className="text-left p-2">Supper</th>
+            </tr>
+          </thead>
+          <tbody>
+            {delegates.map(d => (
+              <tr key={d.id} className="border-t">
+                <td className="p-2">{d.name}</td>
+                <td className="p-2">—</td>
+                <td className="p-2">—</td>
+                <td className="p-2">—</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+export default MealManager;
+
+
+====================================================================================================
+FILE: frontend\src\components\meetings\MeetingForm.jsx
+====================================================================================================
+
+import React, { useState } from 'react';
+
+const MeetingForm = ({ onSubmit }) => {
+  const [title, setTitle] = useState('');
+  const [agenda, setAgenda] = useState('');
+  const [date_time, setDateTime] = useState('');
+  const [location, setLocation] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit({ title, agenda, date_time, location });
+    setTitle('');
+    setAgenda('');
+    setDateTime('');
+    setLocation('');
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-white p-4 rounded shadow">
+      <h2 className="text-lg font-semibold mb-2">Schedule Meeting</h2>
+      <div className="mb-2">
+        <label className="block text-sm font-medium">Title</label>
+        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className="w-full border rounded px-3 py-2" />
+      </div>
+      <div className="mb-2">
+        <label className="block text-sm font-medium">Agenda</label>
+        <textarea value={agenda} onChange={(e) => setAgenda(e.target.value)} className="w-full border rounded px-3 py-2" rows="3" />
+      </div>
+      <div className="mb-2">
+        <label className="block text-sm font-medium">Date & Time</label>
+        <input type="datetime-local" value={date_time} onChange={(e) => setDateTime(e.target.value)} required className="w-full border rounded px-3 py-2" />
+      </div>
+      <div className="mb-2">
+        <label className="block text-sm font-medium">Location</label>
+        <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="w-full border rounded px-3 py-2" />
+      </div>
+      <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Schedule</button>
+    </form>
+  );
+};
+
+export default MeetingForm;
+
+
+====================================================================================================
+FILE: frontend\src\components\meetings\MeetingList.jsx
+====================================================================================================
+
+import React, { useState } from 'react';
+
+const MeetingList = ({ meetings, onCreate, onUpdate, onDelete }) => {
+  const [editing, setEditing] = useState(null);
+  const [formData, setFormData] = useState({ title: '', agenda: '', date_time: '', location: '' });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (editing) {
+      onUpdate(editing, formData);
+    } else {
+      onCreate(formData);
+    }
+    setEditing(null);
+    setFormData({ title: '', agenda: '', date_time: '', location: '' });
+  };
+
+  const startEdit = (meeting) => {
+    setEditing(meeting.id);
+    setFormData({ title: meeting.title, agenda: meeting.agenda, date_time: meeting.date_time, location: meeting.location });
+  };
+
+  return (
+    <div>
+      <form onSubmit={handleSubmit} className="bg-white p-4 rounded shadow mb-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <input type="text" placeholder="Title" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="border p-2 rounded" required />
+        <input type="datetime-local" value={formData.date_time} onChange={(e) => setFormData({...formData, date_time: e.target.value})} className="border p-2 rounded" required />
+        <input type="text" placeholder="Location" value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} className="border p-2 rounded" />
+        <div className="flex space-x-2">
+          <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">{editing ? 'Update' : 'Add'}</button>
+          {editing && <button onClick={() => { setEditing(null); setFormData({ title: '', agenda: '', date_time: '', location: '' }); }} className="bg-gray-400 text-white px-4 py-2 rounded">Cancel</button>}
+        </div>
+      </form>
+      <ul className="space-y-2">
+        {meetings.map(m => (
+          <li key={m.id} className="bg-white p-3 rounded shadow flex justify-between items-center">
+            <div>
+              <h3 className="font-semibold">{m.title}</h3>
+              <p className="text-sm text-gray-600">{new Date(m.date_time).toLocaleString()} - {m.location}</p>
+              <p className="text-sm">{m.agenda}</p>
+            </div>
+            <div className="space-x-2">
+              <button onClick={() => startEdit(m)} className="text-blue-600">Edit</button>
+              <button onClick={() => onDelete(m.id)} className="text-red-600">Delete</button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+export default MeetingList;
+
+
+====================================================================================================
+FILE: frontend\src\components\officials\DesignationManager.jsx
+====================================================================================================
+
+import React, { useState } from 'react';
+import api from '../../api/client';
+
+const DesignationManager = ({ officials, users, departments, districts, onUpdate }) => {
+  const [selectedUser, setSelectedUser] = useState('');
+  const [designation, setDesignation] = useState('');
+  const [districtId, setDistrictId] = useState('');
+  const [deptIds, setDeptIds] = useState([]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await api.post('/officials/designate', {
+      user_id: selectedUser,
+      designation_type: designation,
+      district_id: districtId,
+      department_ids: deptIds
+    });
+    onUpdate();
+    setSelectedUser('');
+    setDesignation('');
+    setDistrictId('');
+    setDeptIds([]);
+  };
+
+  return (
+    <div className="bg-white p-4 rounded shadow">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block font-medium">User</label>
+          <select value={selectedUser} onChange={(e) => setSelectedUser(e.target.value)} className="border p-2 w-full rounded" required>
+            <option value="">Select User</option>
+            {users.map(u => <option key={u.id} value={u.id}>{u.name} ({u.email})</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block font-medium">Designation</label>
+          <select value={designation} onChange={(e) => setDesignation(e.target.value)} className="border p-2 w-full rounded" required>
+            <option value="">Select Designation</option>
+            <option value="president">President</option>
+            <option value="executive_secretary">Executive Secretary</option>
+            <option value="cfo">CFO</option>
+            <option value="director">Director</option>
+            <option value="district_pastor">District Pastor</option>
+            <option value="conference_official">Conference Official</option>
+            <option value="secretary">Secretary</option>
+          </select>
+        </div>
+        {designation === 'district_pastor' && (
+          <div>
+            <label className="block font-medium">District</label>
+            <select value={districtId} onChange={(e) => setDistrictId(e.target.value)} className="border p-2 w-full rounded" required>
+              <option value="">Select District</option>
+              {districts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </div>
+        )}
+        {designation === 'director' && (
+          <div>
+            <label className="block font-medium">Departments (Ctrl+Click for multiple)</label>
+            <select multiple value={deptIds} onChange={(e) => setDeptIds([...e.target.selectedOptions].map(o => o.value))} className="border p-2 w-full rounded h-32">
+              {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </div>
+        )}
+        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">Assign</button>
+      </form>
+      <div className="mt-6">
+        <h3 className="font-semibold">Current Officials</h3>
+        <ul className="list-disc pl-5">
+          {officials.map(o => (
+            <li key={o.user_id}>{o.user_name} - {o.designation} {o.district && `(${o.district})`} {o.departments.length ? `- Depts: ${o.departments.join(', ')}` : ''}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+};
+
+export default DesignationManager;
+
+
+====================================================================================================
+FILE: frontend\src\components\officials\OfficialDashboard.jsx
+====================================================================================================
+
+
+
+
+====================================================================================================
+FILE: frontend\src\components\reports\ReportForm.jsx
+====================================================================================================
+
+import React from 'react';
+import { useForm } from 'react-hook-form';
+import { reportSchemas } from './reportSchemas';
+
+const ReportForm = ({ reportType, initialData, onSubmit }) => {
+  const schema = reportSchemas[reportType] || { fields: [] };
+  const { register, handleSubmit, formState: { errors } } = useForm({ defaultValues: initialData || {} });
+
+  const renderField = (field) => {
+    const common = `border p-2 w-full rounded`;
+    if (field.type === 'number') {
+      return <input type="number" {...register(field.name, { required: field.required })} className={common} />;
+    } else if (field.type === 'text') {
+      return <input type="text" {...register(field.name)} className={common} />;
+    } else if (field.type === 'textarea') {
+      return <textarea {...register(field.name)} className={common} rows="3" />;
+    } else if (field.type === 'select') {
+      return <select {...register(field.name)} className={common}>
+        {field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+      </select>;
+    }
+    return null;
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {schema.fields.map(field => (
+        <div key={field.name}>
+          <label className="block font-medium">{field.label}</label>
+          {renderField(field)}
+          {errors[field.name] && <span className="text-red-500 text-sm">This field is required</span>}
+        </div>
+      ))}
+      <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Submit</button>
+    </form>
+  );
+};
+
+export default ReportForm;
+
+
+====================================================================================================
+FILE: frontend\src\components\reports\ReportList.jsx
+====================================================================================================
+
+import React from 'react';
+
+const ReportList = ({ reports }) => {
+  if (!reports.length) return <p className="text-gray-500">No reports found.</p>;
+  return (
+    <div className="space-y-2">
+      {reports.map(r => (
+        <div key={r.id} className="border p-3 rounded bg-white shadow-sm">
+          <div className="flex justify-between">
+            <span className="font-medium">{r.report_type} - Q{r.quarter} {r.year}</span>
+            <span className={`px-2 py-1 text-xs rounded ${r.status === 'submitted' ? 'bg-yellow-200' : r.status === 'approved' ? 'bg-green-200' : r.status === 'rejected' ? 'bg-red-200' : 'bg-gray-200'}`}>
+              {r.status}
+            </span>
+          </div>
+          <div className="text-sm text-gray-600">District: {r.district}</div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default ReportList;
+
+
+====================================================================================================
+FILE: frontend\src\components\reports\ReportReview.jsx
+====================================================================================================
+
+import React from 'react';
+
+const ReportReview = ({ reports, onReview }) => {
+  const pending = reports.filter(r => r.status === 'submitted' || r.status === 'reviewed');
+  if (!pending.length) return <p>No pending reports for review.</p>;
+
+  return (
+    <div className="space-y-2">
+      {pending.map(r => (
+        <div key={r.id} className="border p-3 rounded bg-white shadow-sm flex justify-between items-center">
+          <div>
+            <span className="font-medium">{r.report_type} - {r.district}</span>
+            <span className="ml-2 text-sm text-gray-600">Q{r.quarter} {r.year}</span>
+          </div>
+          <div>
+            <button onClick={() => onReview(r.id, 'approved')} className="bg-green-500 text-white px-3 py-1 rounded mr-2">Approve</button>
+            <button onClick={() => onReview(r.id, 'rejected')} className="bg-red-500 text-white px-3 py-1 rounded mr-2">Reject</button>
+            <button onClick={() => onReview(r.id, 'reviewed')} className="bg-blue-500 text-white px-3 py-1 rounded">Review</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default ReportReview;
+
+
+====================================================================================================
+FILE: frontend\src\components\reports\reportSchemas.js
+====================================================================================================
+
+export const reportSchemas = {
+  stewardship: {
+    fields: [
+      { name: 'district', label: 'District', type: 'text', required: true },
+      { name: 'reporting_period', label: 'Reporting Period', type: 'text', required: true },
+      { name: 'membership', label: 'Membership as at 1 January', type: 'number', required: true },
+      { name: 'tithers_increase', label: 'Percentage increase in Tithers', type: 'number', required: true },
+      { name: 'offering_givers_increase', label: 'Percentage increase in Regular Offering Givers', type: 'number', required: true },
+      { name: 'churches_budget', label: 'Number of Churches operating on approved budgets', type: 'number', required: true },
+      { name: 'churches_remit', label: 'Number of Churches remitting trust funds monthly', type: 'number', required: true },
+      { name: 'churches_poor_alloc', label: 'Number of Churches with budget allocations for the poor', type: 'number', required: true },
+      { name: 'churches_initiatives', label: 'Number of churches implementing stewardship initiatives to address low giving', type: 'number', required: true },
+      // Add all fields from document...
+    ]
+  },
+  personal_ministries: { fields: [] },
+  sabbath_school: { fields: [] },
+  ministerial: { fields: [] },
+  family_life: { fields: [] },
+  apm: { fields: [] },
+  youth: { fields: [] },
+  music: { fields: [] },
+  chaplaincy: { fields: [] },
+};
+
+
+====================================================================================================
+FILE: frontend\src\contexts\AuthContext.jsx
+====================================================================================================
+
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import api from '../api/client';
+
+const AuthContext = createContext();
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      fetchUser();
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchUser = async () => {
+    try {
+      const res = await api.get('/users/me');
+      setUser(res.data);
+    } catch (error) {
+      console.error('Fetch user error:', error.response?.data || error.message);
+      localStorage.removeItem('access_token');
+      delete api.defaults.headers.common['Authorization'];
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const login = async (email, password) => {
+    const res = await api.post('/auth/login', { email, password });
+    const { access_token } = res.data;
+    localStorage.setItem('access_token', access_token);
+    api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+    await fetchUser();
+    return res.data;
+  };
+
+  const logout = () => {
+    localStorage.removeItem('access_token');
+    delete api.defaults.headers.common['Authorization'];
+    setUser(null);
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuthContext = () => useContext(AuthContext);
+
+
+====================================================================================================
+FILE: frontend\src\contexts\ModuleContext.jsx
+====================================================================================================
+
+
+
+
+====================================================================================================
+FILE: frontend\src\hooks\useAuth.js
+====================================================================================================
+
+import { useAuthContext } from '../contexts/AuthContext';
+
+export const useAuth = () => useAuthContext();
+
+
+====================================================================================================
+FILE: frontend\src\hooks\useModules.js
+====================================================================================================
+
+import { useAuth } from './useAuth';
+
+export const useModules = () => {
+  const { user } = useAuth();
+  const modules = user?.modules || [];
+  const hasModule = (name) => modules.includes(name);
+  return { modules, hasModule };
+};
+
+
+====================================================================================================
+FILE: frontend\src\pages\AdminPage.jsx
+====================================================================================================
+
+import React, { useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import UserManager from '../components/admin/UserManager';
+import ModuleManager from '../components/admin/ModuleManager';
+import DistrictManager from '../components/admin/DistrictManager';
+import DepartmentManager from '../components/admin/DepartmentManager';
+import Statistics from '../components/admin/Statistics';
+
+const AdminPage = () => {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState('stats');
+
+  if (!user?.modules.includes('admin')) {
+    return <div className="p-8 text-center text-red-600">You do not have admin access.</div>;
+  }
+
+  const tabs = [
+    { id: 'stats', label: 'Statistics' },
+    { id: 'users', label: 'Users' },
+    { id: 'modules', label: 'Modules' },
+    { id: 'districts', label: 'Districts' },
+    { id: 'departments', label: 'Departments' },
+  ];
+
+  return (
+    <div className="p-4">
+      <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="flex space-x-4">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`py-2 px-4 ${activeTab === tab.id ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-blue-600'}`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+      <div>
+        {activeTab === 'stats' && <Statistics />}
+        {activeTab === 'users' && <UserManager />}
+        {activeTab === 'modules' && <ModuleManager />}
+        {activeTab === 'districts' && <DistrictManager />}
+        {activeTab === 'departments' && <DepartmentManager />}
+      </div>
+    </div>
+  );
+};
+
+export default AdminPage;
+
+
+====================================================================================================
+FILE: frontend\src\pages\CampsPage.jsx
+====================================================================================================
+
+import React, { useState, useEffect } from 'react';
+import api from '../api/client';
+import CampList from '../components/camps/CampList';
+
+const CampsPage = () => {
+  const [camps, setCamps] = useState([]);
+
+  const fetchCamps = async () => {
+    const res = await api.get('camps/');
+    setCamps(res.data);
+  };
+
+  useEffect(() => {
+    fetchCamps();
+  }, []);
+
+  const handleCreate = async (data) => {
+    await api.post('/camps', data);
+    fetchCamps();
+  };
+
+  const handleUpdate = async (id, data) => {
+    await api.put(`/camps/${id}`, data);
+    fetchCamps();
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Delete this camp?')) {
+      await api.delete(`/camps/${id}`);
+      fetchCamps();
+    }
+  };
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold mb-4">Camps</h1>
+      <CampList camps={camps} onCreate={handleCreate} onUpdate={handleUpdate} onDelete={handleDelete} />
+    </div>
+  );
+};
+
+export default CampsPage;
+
+
+====================================================================================================
+FILE: frontend\src\pages\DashboardPage.jsx
+====================================================================================================
+
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { useModules } from '../hooks/useModules';
+
+const DashboardPage = () => {
+  const { user } = useAuth();
+  const { modules } = useModules();
+
+  // Check if user has admin module
+  const isAdmin = modules.includes('admin');
+
+  // Define module routes and display names
+  const moduleConfig = {
+    reports: { label: 'Reports', path: '/reports' },
+    officials: { label: 'Officials', path: '/officials' },
+    camps: { label: 'Camps', path: '/camps' },
+    meetings: { label: 'Meetings', path: '/meetings' },
+    admin: { label: 'Admin Dashboard', path: '/admin' },
+  };
+
+  // Handle session_meetings_delegate conditionally
+  if (modules.includes('session_meetings_delegate')) {
+    if (isAdmin) {
+      moduleConfig.session_meetings_delegate = { label: 'Delegates Management', path: '/session_meetings_delegate' };
+    } else {
+      moduleConfig.session_meetings_delegate = { label: 'My Delegate Info', path: '/my-delegate' };
+    }
+  }
+
+  // Filter modules that have a configuration
+  const availableModules = modules.filter(mod => moduleConfig[mod]);
+
+  if (availableModules.length === 0) {
+    return (
+      <div className="text-center p-12 bg-white rounded shadow">
+        <h2 className="text-2xl font-bold text-gray-700">No Modules Assigned</h2>
+        <p className="text-gray-500 mt-2">Please contact your administrator to assign modules.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1 className="text-3xl font-bold mb-6">Welcome, {user?.first_name}</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {availableModules.map((mod) => {
+          const config = moduleConfig[mod];
+          return (
+            <Link key={mod} to={config.path} className="bg-white p-6 rounded shadow hover:shadow-lg transition">
+              <h2 className="text-xl font-semibold text-blue-700 capitalize">{config.label}</h2>
+              <p className="text-gray-500 mt-2">Access {config.label} module</p>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+export default DashboardPage;
+
+
+====================================================================================================
+FILE: frontend\src\pages\DelegatesPage.jsx
+====================================================================================================
+
+import React, { useState, useEffect } from 'react';
+import api from '../api/client';
+import DelegateApproval from '../components/delegates/DelegateApproval';
+import BadgeGenerator from '../components/delegates/BadgeGenerator';
+import AttendanceManager from '../components/delegates/AttendanceManager';
+import MealManager from '../components/delegates/MealManager';
+
+const DelegatesPage = () => {
+  const [delegates, setDelegates] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('approval');
+
+  const fetchDelegates = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/users/', { params: { guest_type: 'delegate' } });
+      setDelegates(res.data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDelegates();
+  }, []);
+
+  const tabs = [
+    { id: 'approval', label: 'Approve Delegates' },
+    { id: 'badges', label: 'Generate Badges' },
+    { id: 'attendance', label: 'Attendance' },
+    { id: 'meals', label: 'Meals' },
+  ];
+
+  if (loading) return <div>Loading...</div>;
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold mb-4">Delegates Management</h1>
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="flex space-x-4">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`py-2 px-4 ${activeTab === tab.id ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-blue-600'}`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+      <div>
+        {activeTab === 'approval' && <DelegateApproval delegates={delegates} onUpdate={fetchDelegates} />}
+        {activeTab === 'badges' && <BadgeGenerator delegates={delegates} onUpdate={fetchDelegates} />}
+        {activeTab === 'attendance' && <AttendanceManager delegates={delegates} onUpdate={fetchDelegates} />}
+        {activeTab === 'meals' && <MealManager delegates={delegates} onUpdate={fetchDelegates} />}
+      </div>
+    </div>
+  );
+};
+
+export default DelegatesPage;
+
+
+====================================================================================================
+FILE: frontend\src\pages\LoginPage.jsx
+====================================================================================================
+
+import React from 'react';
+import Login from '../components/auth/Login';
+
+const LoginPage = () => {
+  return <Login />;
+};
+
+export default LoginPage;
+
+
+====================================================================================================
+FILE: frontend\src\pages\MeetingsPage.jsx
+====================================================================================================
+
+import React, { useState, useEffect } from 'react';
+import api from '../api/client';
+import MeetingList from '../components/meetings/MeetingList';
+
+const MeetingsPage = () => {
+  const [meetings, setMeetings] = useState([]);
+
+  const fetchMeetings = async () => {
+    const res = await api.get('meetings/');
+    setMeetings(res.data);
+  };
+
+  useEffect(() => {
+    fetchMeetings();
+  }, []);
+
+  const handleCreate = async (data) => {
+    await api.post('/meetings', data);
+    fetchMeetings();
+  };
+
+  const handleUpdate = async (id, data) => {
+    await api.put(`/meetings/${id}`, data);
+    fetchMeetings();
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Delete this meeting?')) {
+      await api.delete(`/meetings/${id}`);
+      fetchMeetings();
+    }
+  };
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold mb-4">Meetings</h1>
+      <MeetingList meetings={meetings} onCreate={handleCreate} onUpdate={handleUpdate} onDelete={handleDelete} />
+    </div>
+  );
+};
+
+export default MeetingsPage;
+
+
+====================================================================================================
+FILE: frontend\src\pages\MyDelegatePage.jsx
+====================================================================================================
+
+import React, { useState, useEffect } from 'react';
+import api from '../api/client';
+
+const MyDelegatePage = () => {
+  const [info, setInfo] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchInfo = async () => {
+      try {
+        const res = await api.get('/delegates/me');
+        setInfo(res.data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInfo();
+  }, []);
+
+  const downloadBadge = async () => {
+  try {
+    const response = await api.get(`/delegates/badges/${info.id}/download`, {
+      responseType: 'blob'
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `badge_${info.id}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Download failed:', error);
+    alert('Failed to download badge.');
+  }
+};
+
+  if (loading) return <div>Loading...</div>;
+  if (!info) return <div>Error loading delegate info</div>;
+
+  return (
+    <div className="max-w-2xl mx-auto bg-white p-6 rounded shadow">
+      <h1 className="text-2xl font-bold mb-4">My Delegate Information</h1>
+      <div className="space-y-2">
+        <p><span className="font-semibold">Name:</span> {info.name}</p>
+        <p><span className="font-semibold">District:</span> {info.district || 'N/A'}</p>
+        <p><span className="font-semibold">Badge ID:</span> {info.badge_id || 'Not generated yet'}</p>
+        <p><span className="font-semibold">Today's Attendance:</span> {info.attendance || 'Not recorded'}</p>
+        <div>
+          <span className="font-semibold">Meals Today:</span>
+          <ul className="ml-4 list-disc">
+            <li>Breakfast: {info.meals.breakfast || 'Not recorded'}</li>
+            <li>Lunch: {info.meals.lunch || 'Not recorded'}</li>
+            <li>Supper: {info.meals.supper || 'Not recorded'}</li>
+          </ul>
+        </div>
+        {info.badge_id && (
+          <button onClick={downloadBadge} className="bg-blue-600 text-white px-4 py-2 rounded mt-2">
+            Download My Badge
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default MyDelegatePage;
+
+
+====================================================================================================
+FILE: frontend\src\pages\OfficialsPage.jsx
+====================================================================================================
+
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import api from '../api/client';
+import DesignationManager from '../components/officials/DesignationManager';
+
+const OfficialsPage = () => {
+  const { user } = useAuth();
+  const [officials, setOfficials] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [districts, setDistricts] = useState([]);
+
+  const fetchData = async () => {
+    const [offRes, usersRes, deptRes, distRes] = await Promise.all([
+      api.get('/officials/list'),
+      api.get('/users'), // need a list users endpoint
+      api.get('/departments'), // need departments endpoint
+      api.get('/districts')
+    ]);
+    setOfficials(offRes.data);
+    setUsers(usersRes.data);
+    setDepartments(deptRes.data);
+    setDistricts(distRes.data);
+  };
+
+  useEffect(() => {
+    if (user?.designation === 'president' || user?.designation === 'executive_secretary') {
+      fetchData();
+    }
+  }, [user]);
+
+  if (!user?.designation || !['president', 'executive_secretary'].includes(user.designation)) {
+    return <div>You are not authorized to manage officials.</div>;
+  }
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold mb-4">Manage Officials</h1>
+      <DesignationManager 
+        officials={officials} 
+        users={users} 
+        departments={departments} 
+        districts={districts} 
+        onUpdate={fetchData} 
+      />
+    </div>
+  );
+};
+
+export default OfficialsPage;
+
+
+====================================================================================================
+FILE: frontend\src\pages\RegisterPage.jsx
+====================================================================================================
+
+import React from 'react';
+import Register from '../components/auth/Register';
+
+const RegisterPage = () => {
+  return <Register />;
+};
+
+export default RegisterPage;
+
+
+====================================================================================================
+FILE: frontend\src\pages\ReportsPage.jsx
+====================================================================================================
+
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import api from '../api/client';
+import ReportForm from '../components/reports/ReportForm';
+import ReportList from '../components/reports/ReportList';
+import ReportReview from '../components/reports/ReportReview';
+
+const ReportsPage = () => {
+  const { user } = useAuth();
+  const [reports, setReports] = useState([]);
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [editing, setEditing] = useState(false);
+
+  const fetchReports = async () => {
+    const res = await api.get('/reports/list');
+    setReports(res.data);
+  };
+
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  const handleSubmit = async (data) => {
+    // data includes all fields from form; we need to construct payload
+    const payload = {
+      district_id: user.district_id || 1, // should be selected in form
+      quarter: 1, // could be form field
+      year: 2026,
+      report_type: 'stewardship', // should be dynamic
+      data: data
+    };
+    await api.post('/reports/', payload);
+    fetchReports();
+    setEditing(false);
+  };
+
+  const handleReview = async (reportId, action) => {
+    await api.post(`/reports/${reportId}/review`, { action });
+    fetchReports();
+  };
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold mb-4">Reports</h1>
+      {user?.designation && ['district_pastor','director','cfo','executive_secretary','president'].includes(user.designation) && (
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold">Review Reports</h2>
+          <ReportReview reports={reports} onReview={handleReview} />
+        </div>
+      )}
+      <div className="mb-4">
+        <button onClick={() => setEditing(!editing)} className="bg-blue-600 text-white px-4 py-2 rounded">
+          {editing ? 'Cancel' : 'New Report'}
+        </button>
+      </div>
+      {editing && (
+        <div className="bg-white p-4 rounded shadow mb-4">
+          <ReportForm reportType="stewardship" onSubmit={handleSubmit} />
+        </div>
+      )}
+      <div>
+        <h2 className="text-xl font-semibold mb-2">Your Submitted Reports</h2>
+        <ReportList reports={reports} />
+      </div>
+    </div>
+  );
+};
+
+export default ReportsPage;
+
